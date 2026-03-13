@@ -1,0 +1,28 @@
+{
+  "name": "@cmd-market/web",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "WATCHPACK_POLLING=true next dev --turbopack",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@cmd-market/tailwind-config": "workspace:*",
+    "@cmd-market/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "25.5.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.1.6",
+    "postcss": "8.5.8",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3"
+  }
+}

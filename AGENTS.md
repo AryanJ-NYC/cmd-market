@@ -1,0 +1,41 @@
+# AGENTS.md
+
+## Purpose
+
+Use this file as the agent entrypoint for this repository. Keep it short. Treat the linked docs as the source of truth.
+
+## How To Use This File
+
+- Start here to find the right repo-local guidance.
+- Follow deeper docs before making non-trivial changes.
+- If guidance grows beyond table-of-contents size, move it into a linked doc and keep this file concise.
+
+## Source of Truth
+
+- `ARCHITECTURE.md`: system shape, packages, runtime boundaries, and key flows.
+- `docs/index.md`: documentation map and ownership of deeper guidance.
+- `docs/product.md`: product goals, user expectations, and scope.
+- `docs/development.md`: setup, commands, local workflows, and doc rules.
+- `docs/testing.md`: verification strategy, commands, and testing expectations.
+- `docs/plans/active/README.md`: in-progress implementation plans.
+- `docs/plans/completed/README.md`: completed plans and archived design work with lasting value.
+- `docs/references/README.md`: durable external references converted into repo-local notes.
+
+## Task Routing
+
+- Product or scope questions: start with `docs/product.md`.
+- Structural or system changes: start with `ARCHITECTURE.md`.
+- Local setup, commands, or workflows: start with `docs/development.md`.
+- Verification, regressions, or test additions: start with `docs/testing.md`.
+- New implementation planning: write in `docs/plans/active/`.
+
+## Verification Entry Points
+
+- Run the narrowest checks that prove the touched area first.
+- Broaden to repo-level verification before claiming completion.
+- Record exact commands and outcomes in the final handoff.
+
+## Freshness Rules
+
+- Update the linked source-of-truth docs when behavior or structure changes.
+- Keep this file index-like; do not turn it into the manual.
