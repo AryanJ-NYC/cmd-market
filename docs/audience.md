@@ -1,38 +1,40 @@
 # Audience
 
-CMD Market is primarily for casual sellers who want to turn extra stuff into cash quickly, secondarily for resellers who want to cross-list across marketplaces, and thirdly for buyers who want to search fragmented used-goods inventory more efficiently.
+CMD Market's current primary audience is existing OpenClaw users who want the easiest way to sell through agents. Resellers and buyers remain important adjacent audiences, while mainstream casual sellers are a larger expansion audience once the agent workflow becomes easier to adopt without already living in OpenClaw.
 
 ## What This Doc Is
 
 - This is an Ahrefs-backed audience model for the United States market as of March 13, 2026.
-- It uses search demand as a directional proxy for audience and messaging, not as confirmed customer interview truth.
-- It is meant to guide messaging, product framing, and SEO priorities while CMD Market is still early.
+- It combines two inputs: product truth and search demand. Product truth says CMD Market is agent-first and OpenClaw-native today; Ahrefs shows the broader seller and buyer jobs that exist around that wedge.
+- Where product truth and search demand disagree, the current primary audience follows product truth and the expansion roadmap follows search demand.
+- This uses search demand as a directional proxy for audience and messaging, not as confirmed customer interview truth.
 
 ## Audience Hierarchy
 
-1. **Primary: Casual declutterer seller.** The product wedge is a mobile-first seller who wants the fastest path from extra stuff to cash, even though the strongest explicit search demand often uses reseller language.
-2. **Secondary: Reseller / power seller.** Search demand is clearer and more explicit here, especially around cross-listing and multi-marketplace workflow tooling.
-3. **Tertiary: Fragmented-search buyer.** Buyer demand shows up as a search problem, not as generic "aggregator" language.
+1. **Primary: OpenClaw-native seller.** Existing OpenClaw user or agent-comfortable seller who wants to list through an agent instead of doing manual marketplace work.
+2. **Secondary: Reseller / power seller.** The clearest adjacent commercial segment because the workflow pain is strong and the search intent is explicit.
+3. **Tertiary: OpenClaw-native buyer / operator.** Buyer who wants agent-mediated discovery across CMD Market listings and affiliate-linked marketplace inventory.
+4. **Expansion: Mainstream casual seller.** Large eventual market, but not the current core audience because today's value prop assumes agent adoption.
 
-## Primary Persona: Casual Declutterer Seller
+## Primary Persona: OpenClaw-native Seller
 
-- Mobile-first seller trying to move clothes, household goods, or other extra items without learning a complicated resale workflow.
-- Usually starts with a simple question: where should I sell this, and what is the easiest way to do it?
-- Wants the lowest-effort path from one image upload to a usable listing.
-- Cares more about speed, convenience, and buyer reach than about advanced inventory management.
-- Responds to practical messaging such as "turn clutter into cash fast" and "list once, reach more buyers."
-- Ahrefs signals:
-- `best app to sell stuff` — 700 US volume, 92% mobile
-- `best app to sell clothes` — 1,300 US volume, 86% mobile
-- `sell clothes online` — 3,300 US volume, 78% mobile
-- `how to sell used items online` — 150 US volume
+- Already uses OpenClaw or is comfortable delegating selling tasks to an agent.
+- Wants the easiest path from one image upload to a structured, market-ready listing.
+- Values automation, structured inventory, and the ability to turn one listing into multiple marketplace-ready outputs.
+- Is willing to try a new workflow if it dramatically reduces manual listing effort.
+- Can be casual or professional; the defining trait is agent comfort, not seller scale.
+- Search caveat: Ahrefs does not provide a strong direct signal for OpenClaw-native phrasing, so this persona is driven more by current product truth than by public keyword demand.
+- Product-truth signals:
+- sellers list through an OpenClaw skill
+- listings are structured for AI-agent crawling
+- the skill is valuable even if the seller never transacts directly on CMD Market
 
 ## Secondary Persona: Reseller / Power Seller
 
-- More intentional multi-market seller who already thinks in terms of workflow efficiency, cross-listing, and tool comparison.
-- Wants to avoid duplicate listing work across eBay, Mercari, Facebook Marketplace, Craigslist, and similar channels.
-- More willing to evaluate tooling on pricing, coverage, and time saved.
-- Likely to compare CMD Market against dedicated reseller utilities before thinking of it as a marketplace.
+- Already understands multi-marketplace selling and feels duplicate listing pain sharply.
+- Most likely adjacent segment to pay for workflow acceleration, cross-listing, and marketplace coverage.
+- Strong overlap with the primary audience when the reseller is already automation-friendly or already active in OpenClaw.
+- More likely than casual sellers to compare features, pricing, and time saved across tools.
 - Ahrefs signals:
 - `cross listing app` — 600 US volume
 - `free cross listing app` — 350 US volume
@@ -40,52 +42,65 @@ CMD Market is primarily for casual sellers who want to turn extra stuff into cas
 - `cross listing app for resellers` — 150 US volume
 - `sell on multiple marketplaces` — 150 US volume
 
-## Buyer Persona: Fragmented-Search Buyer
+## Buyer Persona: OpenClaw-native Buyer / Operator
 
-- Search-heavy shopper or deal hunter who is not satisfied with searching one marketplace at a time.
-- Usually wants broader geographic coverage, more inventory visibility, or an easier way to search scattered secondhand listings.
-- Experiences the problem as fragmented search, not as a need for a generic marketplace aggregator.
-- Fits CMD Market's buyer-side advantage: native listings plus affiliate-linked discovery from major marketplaces.
-- Ahrefs signals:
+- Uses an agent to search structured used-goods inventory faster than manual marketplace hopping.
+- Wants broad discovery across CMD Market native listings plus affiliate-linked results from larger marketplaces.
+- Cares about agent-readable structure, cleaner retrieval, and the ability to discover supply that would otherwise stay fragmented.
+- The current buyer wedge is agent-mediated discovery, even though the broader public search demand shows up in manual search phrasing.
+- Underlying search-demand signals:
 - `search all craigslist` — 2,800 US volume
 - `search all of craigslist` — 1,400 US volume
 - `search facebook marketplace nationwide` — 150 US volume
 
+## Expansion Persona: Mainstream Casual Seller
+
+- Wants the fastest, easiest way to turn extra stuff into cash from a phone.
+- Usually starts with simple questions like where to sell, what app is easiest, and how to avoid listing the same item over and over.
+- Represents a broader future market once the agent layer becomes invisible enough that OpenClaw is not a prerequisite.
+- Is not the current primary audience because today's product story still assumes some agent familiarity.
+- Ahrefs signals:
+- `best app to sell stuff` — 700 US volume, 92% mobile
+- `best app to sell clothes` — 1,300 US volume, 86% mobile
+- `sell clothes online` — 3,300 US volume, 78% mobile
+- `how to sell used items online` — 150 US volume
+
 ## Jobs To Be Done
 
-- Turn extra items into cash quickly from a phone.
-- Convert a single image upload into a structured listing without rewriting everything by hand.
-- Reach more buyers without manually choosing and re-entering every marketplace.
-- Reduce the mental overhead of deciding where an item should be listed.
-- Search scattered marketplace inventory from one web or agent-mediated experience.
+- Sell through an agent instead of manually drafting every listing from scratch.
+- Convert one image upload into structured, market-ready inventory.
+- Reach buyers across CMD Market and other marketplaces without duplicate manual entry.
+- Search fragmented supply through agent-readable inventory and agent-mediated discovery.
+- Reduce the decision fatigue of where to list, where to search, and how much manual work is required.
 
 ## Pain Points and Objections
 
-- Listing the same item on multiple marketplaces feels repetitive and annoying.
-- Sellers are unsure which marketplace is worth the effort for a given item.
-- Early users are price-sensitive and will compare "free" versus paid tooling.
-- Agent workflows may sound powerful but unfamiliar, which creates skepticism or trust friction.
-- Buyers are frustrated by local limits, weak filters, and one-site-at-a-time searching.
+- Manual listing across marketplaces is repetitive and slow.
+- Agent-curious sellers worry about trust, accuracy, and control when an agent generates listing drafts.
+- Non-OpenClaw sellers may see the agent step as extra setup friction.
+- Resellers compare free and paid tooling aggressively.
+- Buyers are frustrated by weak cross-market search and one-site-at-a-time browsing.
 
 ## Customer Language
 
-- Casual seller language: `best app to sell stuff`, `best app to sell clothes`, `sell clothes online`, `how to sell used items online`
-- Reseller language: `cross listing app`, `free cross listing app`, `best cross listing app for resellers`, `sell on multiple marketplaces`
-- Buyer language: `search all craigslist`, `search all of craigslist`, `search facebook marketplace nationwide`
-- Words to lean on: `turn clutter into cash`, `sell your stuff`, `list once`, `reach more buyers`, `search across marketplaces`
-- Words to avoid leading with on broad top-of-funnel pages: `omnichannel`, `catalog syndication`, `inventory orchestration`
+- Current core-user language to test in product and marketing copy: `sell through an agent`, `list through OpenClaw`, `one image to market-ready listing`, `agent-readable inventory`
+- Search-proven seller language: `cross listing app`, `free cross listing app`, `sell on multiple marketplaces`, `best app to sell stuff`, `best app to sell clothes`
+- Search-proven buyer language: `search all craigslist`, `search all of craigslist`, `search facebook marketplace nationwide`
+- Words to lean on: `sell through agents`, `list once`, `reach more buyers`, `structured inventory`, `search across marketplaces`
+- Words to avoid on broad top-of-funnel pages: `omnichannel`, `catalog syndication`, `inventory orchestration`
 
 ## Implications for CMD Market
 
-- Lead broad seller messaging with the casual seller promise: turn clutter into cash fast.
-- Keep the first-value story concrete: one image upload, structured listings, broader reach.
-- Treat reseller language as a secondary but strategically important acquisition wedge because search demand is clearer there.
-- Treat buyer positioning as a fragmented-search problem, not just a marketplace aggregation feature.
-- Prioritize mobile-first seller UX and copy, especially on top-of-funnel pages.
-- Build SEO and feature pages that can speak directly to reseller terms such as `cross listing app` and `sell on multiple marketplaces` without rewriting the whole brand around a reseller-only ICP.
+- Position the current product as agent-first, not as a generic mass-market listing app.
+- Speak directly to existing OpenClaw users on the homepage, onboarding, and early growth loops.
+- Treat reseller language as the strongest adjacent acquisition wedge because the problem and willingness to pay are easier to observe.
+- Treat broader casual-seller language as expansion demand, not as the current core user.
+- Buyer messaging should emphasize agent-mediated discovery plus structured inventory, not only generic marketplace aggregation.
+- The clearest honest promise right now is: if you already use OpenClaw, CMD Market makes selling through agents dramatically easier.
 
 ## Anti-Personas
 
+- Non-agent users who want zero setup or behavior change today.
 - Enterprise merchants looking for ERP-grade multichannel operations.
 - Users who want fully managed consignment instead of self-serve listing workflows.
 - Buyers looking for broad retail price-comparison rather than used-goods or secondhand discovery.
