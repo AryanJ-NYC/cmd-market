@@ -13,6 +13,7 @@ Use this file as the agent entrypoint for this repository. Keep it short. Treat 
 ## Source of Truth
 
 - `ARCHITECTURE.md`: system shape, packages, runtime boundaries, and key flows.
+- `apps/web/docs/design.md`: durable web visual system, voice, and UI composition rules.
 - `docs/index.md`: documentation map and ownership of deeper guidance.
 - `docs/audience.md`: audience hierarchy, personas, and messaging priorities.
 - `docs/product.md`: product goals, user expectations, and scope.
@@ -26,6 +27,7 @@ Use this file as the agent entrypoint for this repository. Keep it short. Treat 
 
 - Product or scope questions: start with `docs/product.md`.
 - Audience or persona questions: start with `docs/audience.md`.
+- Design system, landing page, or visual language work: start with `apps/web/docs/design.md`.
 - Structural or system changes: start with `ARCHITECTURE.md`.
 - Local setup, commands, or workflows: start with `docs/development.md`.
 - Verification, regressions, or test additions: start with `docs/testing.md`.

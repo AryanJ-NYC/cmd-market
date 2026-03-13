@@ -7,6 +7,7 @@ This repository uses a harness-style documentation system: short entrypoints rou
 - `../README.md`: quick human onboarding and main commands
 - `../AGENTS.md`: short routing file for coding agents
 - `../ARCHITECTURE.md`: durable technical structure and repo boundaries
+- `../apps/web/docs/design.md`: durable visual system, landing-page language, and composition rules
 - `audience.md`: durable audience model, personas, and messaging priorities
 - `product.md`: durable product truth and current scope
 - `development.md`: development workflows, commands, and doc maintenance rules

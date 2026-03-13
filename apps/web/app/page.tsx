@@ -1,7 +1,26 @@
+import type { Metadata } from "next";
+import { JetBrains_Mono } from "next/font/google";
+import { BlogSection } from "./_components/landing/blog-section";
+import { Footer } from "./_components/landing/footer";
+import { HeroSection } from "./_components/landing/hero-section";
+import { SkillSection } from "./_components/landing/skill-section";
+
+export const metadata: Metadata = {
+  title: "CMD Market"
+};
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"]
+});
+
 export default function HomePage() {
   return (
-    <main className="grid min-h-screen place-items-center bg-red-50">
-      Hello, World!
+    <main className="min-h-screen bg-neutral-950 text-stone-100">
+      <HeroSection monoClassName={mono.className} />
+      <SkillSection monoClassName={mono.className} />
+      <BlogSection monoClassName={mono.className} />
+      <Footer monoClassName={mono.className} />
     </main>
   );
 }
