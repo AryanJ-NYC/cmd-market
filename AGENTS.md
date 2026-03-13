@@ -14,6 +14,7 @@ Use this file as the agent entrypoint for this repository. Keep it short. Treat 
 
 - `ARCHITECTURE.md`: system shape, packages, runtime boundaries, and key flows.
 - `docs/index.md`: documentation map and ownership of deeper guidance.
+- `docs/audience.md`: audience hierarchy, personas, and messaging priorities.
 - `docs/product.md`: product goals, user expectations, and scope.
 - `docs/development.md`: setup, commands, local workflows, and doc rules.
 - `docs/testing.md`: verification strategy, commands, and testing expectations.
@@ -24,6 +25,7 @@ Use this file as the agent entrypoint for this repository. Keep it short. Treat 
 ## Task Routing
 
 - Product or scope questions: start with `docs/product.md`.
+- Audience or persona questions: start with `docs/audience.md`.
 - Structural or system changes: start with `ARCHITECTURE.md`.
 - Local setup, commands, or workflows: start with `docs/development.md`.
 - Verification, regressions, or test additions: start with `docs/testing.md`.
