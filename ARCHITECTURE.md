@@ -14,7 +14,7 @@ CMD Market is currently a frontend-first Turborepo scaffold for a future marketp
 ## Runtime Boundaries
 
 - The only runtime app today is the web frontend in `apps/web`.
-- There is no backend, worker, database, or external marketplace integration in this repo yet.
+- There is no backend, worker, or database in this repo yet.
 - Tailwind PostCSS config is kept local to `apps/web` because Next.js 16 Turbopack expects app-local PostCSS wiring.
 
 ## Key Flows
