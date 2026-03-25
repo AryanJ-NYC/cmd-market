@@ -1,0 +1,21 @@
+flowchart TD
+    A[Buyer places order] --> B[Create payment_intent]
+    B --> C{Selected rail}
+    C -->|Stripe| D[Create Stripe payment attempt]
+    C -->|BTCPay Server| E[Create BTC payment attempt]
+    C -->|NEAR Intents| F[Create NEAR payment attempt]
+    D --> G[Provider confirms payment]
+    E --> G
+    F --> G
+    G --> H[Create ledger_transaction: payment_received]
+    H --> I[Credit platform escrow or seller held accounts]
+    I --> J[Order status becomes paid]
+    J --> K[Seller ships item]
+    K --> L[Carrier marks shipment delivered]
+    L --> M[Cooling-off window elapses]
+    M --> N{Dispute or refund before release?}
+    N -->|No| O[Create ledger_transaction: hold_released]
+    O --> P[Create payout]
+    P --> Q[Payout confirmed]
+    N -->|Yes| R[Create ledger_transaction: refund_issued or dispute_reserved]
+    R --> S[Refund buyer or continue review]

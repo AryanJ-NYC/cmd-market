@@ -1,0 +1,41 @@
+stateDiagram-v2
+    [*] --> ListingDraft
+
+    ListingDraft --> ListingPublished: publish
+    ListingPublished --> ListingReserved: reservation created
+    ListingReserved --> ListingPublished: reservation released
+    ListingReserved --> ListingSold: order paid
+    ListingPublished --> ListingCancelled: seller/admin cancel
+    ListingPublished --> ListingExpired: expiration policy
+
+    ListingSold --> [*]
+    ListingCancelled --> [*]
+    ListingExpired --> [*]
+
+    --
+
+    state "Order Lifecycle" as OrderLifecycle {
+        [*] --> PendingPayment
+        PendingPayment --> Paid: payment_intent confirmed
+        PendingPayment --> Cancelled: timeout or manual cancel
+        Paid --> FulfillmentPending: hold created
+        FulfillmentPending --> Shipped: shipment confirmed
+        Shipped --> Delivered: carrier delivery
+        Delivered --> Completed: review window closes and payout released
+        Paid --> Refunded: refund before shipment
+        FulfillmentPending --> Disputed: issue opened
+        Shipped --> Disputed: issue opened
+        Delivered --> Disputed: issue opened
+        Disputed --> Completed: seller wins
+        Disputed --> Refunded: buyer wins
+    }
+
+    --
+
+    state "Payout Lifecycle" as PayoutLifecycle {
+        [*] --> Held
+        Held --> Eligible: shipment and policy conditions satisfied
+        Eligible --> Released: payout submitted and confirmed
+        Held --> Reversed: refund or dispute before release
+        Released --> Reversed: recovery or post-release adjustment
+    }

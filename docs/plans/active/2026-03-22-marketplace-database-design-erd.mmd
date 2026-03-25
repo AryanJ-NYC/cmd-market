@@ -1,0 +1,151 @@
+erDiagram
+    user ||--o{ member : joins
+    organization ||--o{ member : has
+    organization ||--o{ invitation : issues
+    organization ||--o{ apikey : owns
+    organization ||--|| seller_account : maps_to
+    seller_account ||--|| seller_profile : exposes
+    seller_account ||--|| seller_policy : configures
+    seller_account ||--o{ seller_social_verification : verifies
+    seller_account ||--o{ seller_payout_method : pays_out_to
+    seller_account ||--o{ listing : owns
+    category ||--o{ category_attribute : enables
+    attribute_definition ||--o{ category_attribute : defines
+    listing ||--o{ listing_media : contains
+    listing ||--o{ listing_attribute_value : describes
+    category_attribute ||--o{ listing_attribute_value : constrains
+    listing ||--o{ listing_reservation : reserves
+    seller_account ||--o{ order : sells_to
+    user ||--o{ order : places
+    order ||--|{ order_item : contains
+    order ||--|| order_shipping_address : ships_to
+    order ||--o{ payment_intent : pays_with
+    payment_intent ||--o{ payment_attempt : attempts
+    order ||--o| shipment : fulfills
+    order ||--o{ refund : refunds
+    order ||--o{ dispute : disputes
+    order ||--o| seller_feedback : yields
+    seller_account ||--o{ seller_feedback : receives
+    user ||--o{ seller_feedback : leaves
+    seller_account ||--o{ audit_event : affects
+    order ||--o{ ledger_transaction : references
+    payment_intent ||--o{ ledger_transaction : references
+    ledger_transaction ||--|{ ledger_entry : contains
+    ledger_account ||--o{ ledger_entry : posts_to
+    seller_account ||--o{ payout : receives
+    seller_payout_method ||--o{ payout : routes
+
+    user {
+        text id PK
+        text email
+        boolean emailVerified
+    }
+
+    organization {
+        text id PK
+        text name
+        text slug
+    }
+
+    apikey {
+        text id PK
+        text referenceId
+        text name
+        boolean enabled
+    }
+
+    seller_account {
+        uuid id PK
+        text organization_id FK
+        text status
+        text listing_eligibility_status
+        text listing_eligibility_source
+    }
+
+    seller_social_verification {
+        uuid id PK
+        uuid seller_account_id FK
+        text platform
+        text handle
+        bigint follower_count_snapshot
+        text status
+    }
+
+    category {
+        uuid id PK
+        text slug
+        text name
+    }
+
+    attribute_definition {
+        uuid id PK
+        text key
+        text value_type
+    }
+
+    category_attribute {
+        uuid id PK
+        uuid category_id FK
+        uuid attribute_definition_id FK
+        boolean is_required
+    }
+
+    listing {
+        uuid id PK
+        uuid seller_account_id FK
+        uuid category_id FK
+        text title
+        bigint unit_price_minor
+        int quantity_available
+        text status
+    }
+
+    order {
+        uuid id PK
+        uuid seller_account_id FK
+        text buyer_user_id FK
+        bigint total_minor
+        text selected_payment_rail
+        text status
+    }
+
+    payment_intent {
+        uuid id PK
+        uuid order_id FK
+        text rail
+        text settlement_asset_code
+        numeric settlement_amount_atomic
+        text status
+    }
+
+    ledger_account {
+        uuid id PK
+        text owner_type
+        text purpose
+        text asset_code
+    }
+
+    ledger_transaction {
+        uuid id PK
+        text type
+        uuid order_id FK
+        uuid payment_intent_id FK
+    }
+
+    payout {
+        uuid id PK
+        uuid seller_account_id FK
+        uuid seller_payout_method_id FK
+        text asset_code
+        numeric amount_atomic
+        text status
+    }
+
+    seller_feedback {
+        uuid id PK
+        uuid order_id FK
+        uuid seller_account_id FK
+        text buyer_user_id FK
+        smallint rating
+        text status
+    }
