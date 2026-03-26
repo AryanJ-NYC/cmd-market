@@ -54,10 +54,26 @@ export async function createOpenClawApiKey(headers: HeadersLike, organizationId:
     }))
   });
 
-  const created = await auth.api.createApiKey({
-    body: request,
-    headers: requestHeaders
-  });
+  let created: Awaited<ReturnType<typeof auth.api.createApiKey>>;
+
+  try {
+    created = await auth.api.createApiKey({
+      body: request,
+      headers: requestHeaders
+    });
+  } catch (caughtError) {
+    const refreshedKeys = await listOpenClawApiKeys(requestHeaders, organizationId);
+
+    buildOpenClawApiKeyRequest({
+      organizationId,
+      existingKeys: refreshedKeys.map((key) => ({
+        configId: key.configId,
+        id: key.id
+      }))
+    });
+
+    throw caughtError;
+  }
 
   const refreshedKeys = await listOpenClawApiKeys(requestHeaders, organizationId);
 

@@ -149,6 +149,7 @@ model apikey {
 
   @@index([configId])
   @@index([referenceId])
+  @@unique([configId, referenceId])
   @@map("apikey")
 }
 

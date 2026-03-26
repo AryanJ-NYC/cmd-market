@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
@@ -198,6 +201,9 @@ CREATE INDEX "apikey_configId_idx" ON "apikey"("configId");
 
 -- CreateIndex
 CREATE INDEX "apikey_referenceId_idx" ON "apikey"("referenceId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "apikey_configId_referenceId_key" ON "apikey"("configId", "referenceId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "seller_account_organization_id_key" ON "seller_account"("organization_id");

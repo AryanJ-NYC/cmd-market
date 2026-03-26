@@ -263,6 +263,32 @@ describe("seller service", () => {
     expect(result.keys).toHaveLength(1);
   });
 
+  it("treats a concurrent OpenClaw key creation as already authorized", async () => {
+    authApi.listApiKeys
+      .mockResolvedValueOnce({ apiKeys: [] })
+      .mockResolvedValueOnce({
+        apiKeys: [
+          {
+            configId: "openclaw",
+            createdAt: new Date("2026-03-25T12:00:00.000Z"),
+            id: "key_123",
+            lastRequest: null,
+            metadata: { integration: "openclaw" },
+            name: "OpenClaw",
+            permissions: { seller: ["manage"] },
+            prefix: "cmdmkt_",
+            start: "cmdmkt_abcd"
+          }
+        ]
+      });
+    authApi.createApiKey.mockRejectedValue(new Error("duplicate key"));
+
+    await expect(createOpenClawApiKey(new Headers(), "org_123")).rejects.toMatchObject({
+      code: "openclaw_key_exists",
+      message: "OpenClaw is already authorized for this seller workspace."
+    });
+  });
+
   it("returns the shared publishability policy for an ineligible seller", async () => {
     authApi.getSession.mockResolvedValue({
       session: { activeOrganizationId: "org_123" },
