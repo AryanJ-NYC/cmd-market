@@ -16,7 +16,7 @@
 - Local PostgreSQL defaults to `postgres://postgres:postgres@127.0.0.1:5433/cmd_market`.
 - `apps/web/lib/env.ts` validates server env with `@t3-oss/env-nextjs`.
 - `BETTER_AUTH_SECRET` is required for production builds and should be changed from the example value before sharing credentials or deploying.
-- Twitter/X auth is optional for local development until you need the full sign-in flow.
+- `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` are required in development and production. Tests can omit them.
 
 ## Commands
 

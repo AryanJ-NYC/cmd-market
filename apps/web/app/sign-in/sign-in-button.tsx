@@ -38,9 +38,7 @@ export function SignInButton({ twitterEnabled }: SignInButtonProps) {
       </button>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!twitterEnabled ? (
-        <p className="text-sm text-stone-400">
-          Add `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` to enable seller sign-in locally.
-        </p>
+        <p className="text-sm text-stone-400">Twitter/X sign-in is disabled for this environment.</p>
       ) : null}
     </div>
   );

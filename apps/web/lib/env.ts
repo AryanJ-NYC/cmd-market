@@ -4,6 +4,7 @@ import { z } from "zod";
 const DEFAULT_APP_BASE_URL = "http://localhost:3000";
 const DEFAULT_DATABASE_URL = "postgres://postgres:postgres@127.0.0.1:5433/cmd_market";
 const DEFAULT_BETTER_AUTH_SECRET = "development-only-secret-change-me";
+const requireTwitterAuthConfig = process.env.NODE_ENV !== "test";
 
 const validatedEnv = createEnv({
   emptyStringAsUndefined: true,
@@ -17,8 +18,8 @@ const validatedEnv = createEnv({
     DATABASE_URL: z.string().url().default(DEFAULT_DATABASE_URL),
     DEV_SELLER_OVERRIDE_EMAILS: z.string().default(""),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    TWITTER_CLIENT_ID: z.string().min(1).optional(),
-    TWITTER_CLIENT_SECRET: z.string().min(1).optional()
+    TWITTER_CLIENT_ID: requireTwitterAuthConfig ? z.string().min(1) : z.string().min(1).optional(),
+    TWITTER_CLIENT_SECRET: requireTwitterAuthConfig ? z.string().min(1) : z.string().min(1).optional(),
   }
 });
 
