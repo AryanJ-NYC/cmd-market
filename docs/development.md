@@ -41,6 +41,7 @@
   - `/seller/workspace`
   - `/seller/settings`
 - OpenClaw authorization is currently limited to one organization-owned API key per seller workspace.
+- Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
 
 ## Database Workflow
 

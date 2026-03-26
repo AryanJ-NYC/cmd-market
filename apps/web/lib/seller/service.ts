@@ -194,6 +194,14 @@ async function listSellerOrganizations(headers: HeadersLike) {
 }
 
 export async function overrideSellerEligibility(headers: HeadersLike, note: string | null) {
+  if (!env.allowDevelopmentOverrides) {
+    throw new SellerDomainError(
+      403,
+      "forbidden",
+      "Development seller override is unavailable in production."
+    );
+  }
+
   const workspaceData = await getSellerWorkspacePageData(headers);
 
   if (!workspaceData) {
@@ -212,6 +220,7 @@ export async function overrideSellerEligibility(headers: HeadersLike, note: stri
     actorUserEmail: workspaceData.session.email,
     actorUserId: workspaceData.session.id,
     allowlistedEmails: env.developmentSellerOverrideEmails,
+    developmentOverrideEnabled: env.allowDevelopmentOverrides,
     note,
     now: new Date(),
     repository: sellerAccountRepository,
@@ -334,7 +343,7 @@ async function requireSellerSession(headers: Headers) {
 }
 
 function isDevelopmentOverrideAllowed(email: string) {
-  return env.developmentSellerOverrideEmails.some(
+  return env.allowDevelopmentOverrides && env.developmentSellerOverrideEmails.some(
     (allowlistedEmail) => allowlistedEmail.toLowerCase() === email.toLowerCase()
   );
 }

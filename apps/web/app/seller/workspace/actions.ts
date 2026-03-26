@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSellerWorkspace } from "../../../lib/seller/service";
+import { activateSellerWorkspace, createSellerWorkspace } from "../../../lib/seller/service";
 
 export async function createWorkspaceAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -18,6 +18,22 @@ export async function createWorkspaceAction(formData: FormData) {
 
   try {
     await createSellerWorkspace(await headers(), { name, slug });
+  } catch (caughtError) {
+    redirect(`/seller/workspace?error=${encodeURIComponent(getActionErrorMessage(caughtError))}`);
+  }
+
+  redirect("/seller/settings");
+}
+
+export async function activateWorkspaceAction(formData: FormData) {
+  const organizationId = String(formData.get("organizationId") ?? "").trim();
+
+  if (!organizationId) {
+    redirect("/seller/workspace?error=Workspace+selection+is+required.");
+  }
+
+  try {
+    await activateSellerWorkspace(await headers(), organizationId);
   } catch (caughtError) {
     redirect(`/seller/workspace?error=${encodeURIComponent(getActionErrorMessage(caughtError))}`);
   }

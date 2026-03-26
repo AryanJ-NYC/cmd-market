@@ -1,6 +1,8 @@
 export const OPENCLAW_API_KEY_CONFIG_ID = "openclaw";
 export const OPENCLAW_API_KEY_NAME = "OpenClaw";
 export const OPENCLAW_API_KEY_PREFIX = "cmdmkt_";
+export const OPENCLAW_API_KEY_RATE_LIMIT_MAX_REQUESTS = 300;
+export const OPENCLAW_API_KEY_RATE_LIMIT_WINDOW_MS = 1000 * 60;
 
 export function getSellerWorkspaceFlow({
   organizations,

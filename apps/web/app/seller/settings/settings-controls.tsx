@@ -166,7 +166,7 @@ export function SellerSettingsControls({
           </form>
         ) : (
           <p className="text-sm text-stone-500">
-            Development override is only shown for signed-in sellers whose email appears in
+            Development override is only shown outside production for signed-in sellers whose email appears in
             `DEV_SELLER_OVERRIDE_EMAILS`.
           </p>
         )}

@@ -9,7 +9,12 @@ import { prisma } from "../db/client";
 import { env } from "../env";
 import { ensureSellerAccountForOrganization } from "../seller/domain";
 import { sellerAccountRepository } from "../seller/repository";
-import { OPENCLAW_API_KEY_CONFIG_ID, OPENCLAW_API_KEY_PREFIX } from "../seller/workspace";
+import {
+  OPENCLAW_API_KEY_CONFIG_ID,
+  OPENCLAW_API_KEY_PREFIX,
+  OPENCLAW_API_KEY_RATE_LIMIT_MAX_REQUESTS,
+  OPENCLAW_API_KEY_RATE_LIMIT_WINDOW_MS
+} from "../seller/workspace";
 
 const authOptions = {
   baseURL: env.appBaseUrl,
@@ -55,6 +60,11 @@ const authOptions = {
           defaultPermissions: {
             seller: ["manage"]
           }
+        },
+        rateLimit: {
+          enabled: true,
+          maxRequests: OPENCLAW_API_KEY_RATE_LIMIT_MAX_REQUESTS,
+          timeWindow: OPENCLAW_API_KEY_RATE_LIMIT_WINDOW_MS
         },
         references: "organization",
         requireName: true

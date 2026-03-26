@@ -4,13 +4,7 @@ export async function ensureSellerAccountForOrganization({
   createId,
   now
 }: EnsureSellerAccountForOrganizationInput): Promise<SellerAccountRecord> {
-  const existingAccount = await repository.findByOrganizationId(organizationId);
-
-  if (existingAccount) {
-    return existingAccount;
-  }
-
-  return repository.create({
+  return repository.createIfMissing({
     id: createId(),
     organizationId,
     status: "active",
@@ -141,12 +135,21 @@ export async function applyDevelopmentEligibilityOverride({
   actorUserId,
   actorUserEmail,
   allowlistedEmails,
+  developmentOverrideEnabled,
   note,
   now,
   sellerAccountId,
   repository,
   writeAuditEvent
 }: ApplyDevelopmentEligibilityOverrideInput): Promise<SellerAccountRecord> {
+  if (!developmentOverrideEnabled) {
+    throw new SellerDomainError(
+      403,
+      "forbidden",
+      "Development seller override is unavailable in production."
+    );
+  }
+
   if (!isAllowlistedEmail(actorUserEmail, allowlistedEmails)) {
     throw new SellerDomainError(403, "forbidden", "Seller is not allowlisted for development overrides.");
   }
@@ -236,6 +239,7 @@ type ApplyDevelopmentEligibilityOverrideInput = {
   actorUserId: string;
   actorUserEmail: string;
   allowlistedEmails: string[];
+  developmentOverrideEnabled: boolean;
   note: string | null;
   now: Date;
   sellerAccountId: string;
@@ -280,7 +284,7 @@ type AuditEventInput = {
 };
 
 export type SellerAccountRepository = {
-  create(record: SellerAccountRecord): Promise<SellerAccountRecord>;
+  createIfMissing(record: SellerAccountRecord): Promise<SellerAccountRecord>;
   findByOrganizationId(organizationId: string): Promise<SellerAccountRecord | null>;
   findBySellerAccountId(sellerAccountId: string): Promise<SellerAccountRecord | null>;
   updateEligibility(input: UpdateSellerEligibilityInput): Promise<SellerAccountRecord>;

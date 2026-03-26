@@ -11,9 +11,9 @@ import type {
 export class PrismaSellerAccountRepository implements SellerAccountRepository {
   constructor(private readonly database: PrismaClient) {}
 
-  async create(record: SellerAccountRecord): Promise<SellerAccountRecord> {
-    const created = await this.database.sellerAccount.create({
-      data: {
+  async createIfMissing(record: SellerAccountRecord): Promise<SellerAccountRecord> {
+    const created = await this.database.sellerAccount.upsert({
+      create: {
         createdAt: record.createdAt,
         defaultDisplayCurrencyCode: record.defaultDisplayCurrencyCode,
         id: record.id,
@@ -23,6 +23,10 @@ export class PrismaSellerAccountRepository implements SellerAccountRepository {
         organizationId: record.organizationId,
         status: record.status,
         updatedAt: record.updatedAt
+      },
+      update: {},
+      where: {
+        organizationId: record.organizationId
       }
     });
 

@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createWorkspaceAction } from "./actions";
+import { WorkspaceActivationForm } from "./workspace-activation-form";
 import { getSellerWorkspacePageData } from "../../../lib/seller/service";
 
 export const metadata: Metadata = {
@@ -23,10 +23,6 @@ export default async function SellerWorkspacePage({
   const error =
     typeof resolvedSearchParams.error === "string" ? decodeURIComponent(resolvedSearchParams.error) : null;
 
-  if (workspaceData.organizations.length === 1 && workspaceData.flow.kind === "activate") {
-    redirect(`/seller/workspace/activate?organizationId=${workspaceData.flow.organizationId}`);
-  }
-
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-12 text-stone-100">
       <div className="mx-auto max-w-3xl space-y-8">
@@ -45,7 +41,21 @@ export default async function SellerWorkspacePage({
           <div className="rounded-2xl border border-red-900/70 bg-red-950/30 px-4 py-3 text-sm text-red-200">{error}</div>
         ) : null}
 
-        {workspaceData.organizations.length === 0 ? (
+        {workspaceData.flow.kind === "activate" ? (
+          <section className="rounded-3xl border border-stone-800 bg-stone-950/80 p-6">
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-stone-50">Activating your seller workspace.</h2>
+              <p className="text-sm leading-6 text-stone-400">
+                CMD Market found exactly one seller workspace for your account, so it can become active automatically.
+              </p>
+              <WorkspaceActivationForm
+                autoSubmit
+                buttonLabel="Continue to Seller Settings"
+                organizationId={workspaceData.flow.organizationId}
+              />
+            </div>
+          </section>
+        ) : workspaceData.organizations.length === 0 ? (
           <section className="rounded-3xl border border-stone-800 bg-stone-950/80 p-6">
             <form action={createWorkspaceAction} className="space-y-5">
               <div className="space-y-2">
@@ -101,21 +111,14 @@ export default async function SellerWorkspacePage({
                         Active
                       </span>
                     ) : null}
-                    <Link
-                      className="rounded-full border border-stone-700 px-4 py-2 text-sm font-medium text-stone-100 transition hover:border-stone-500 hover:bg-stone-800"
-                      href={`/seller/workspace/activate?organizationId=${organization.id}`}
-                    >
-                      {isActive ? "Refresh Selection" : "Use Workspace"}
-                    </Link>
+                    <WorkspaceActivationForm
+                      buttonLabel={isActive ? "Refresh Selection" : "Use Workspace"}
+                      organizationId={organization.id}
+                    />
                   </div>
                 </div>
               );
             })}
-            <div className="pt-2">
-              <Link className="text-sm text-stone-300 underline decoration-stone-700 underline-offset-4" href="/seller/settings">
-                Continue to seller settings
-              </Link>
-            </div>
           </section>
         )}
       </div>

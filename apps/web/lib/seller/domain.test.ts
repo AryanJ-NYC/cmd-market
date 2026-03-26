@@ -150,6 +150,7 @@ describe("seller domain", () => {
       actorUserId: "user_123",
       actorUserEmail: "seller@example.com",
       allowlistedEmails: ["seller@example.com"],
+      developmentOverrideEnabled: true,
       note: "approved for development",
       now: fixedNow(),
       sellerAccountId: "seller_123",
@@ -189,6 +190,7 @@ describe("seller domain", () => {
         actorUserId: "user_123",
         actorUserEmail: "seller@example.com",
         allowlistedEmails: ["other@example.com"],
+        developmentOverrideEnabled: true,
         note: null,
         now: fixedNow(),
         sellerAccountId: "seller_123",
@@ -197,6 +199,37 @@ describe("seller domain", () => {
       })
     ).rejects.toMatchObject({
       code: "forbidden",
+      status: 403
+    });
+
+    expect(repo.records[0]?.listingEligibilityStatus).toBe("pending");
+    expect(writeAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects development overrides when the environment gate is disabled", async () => {
+    const repo = createSellerAccountRepository([
+      createSellerAccount({
+        id: "seller_123",
+        organizationId: "org_123"
+      })
+    ]);
+    const writeAuditEvent = vi.fn(async () => undefined);
+
+    await expect(
+      applyDevelopmentEligibilityOverride({
+        actorUserId: "user_123",
+        actorUserEmail: "seller@example.com",
+        allowlistedEmails: ["seller@example.com"],
+        developmentOverrideEnabled: false,
+        note: "approved for development",
+        now: fixedNow(),
+        sellerAccountId: "seller_123",
+        repository: repo,
+        writeAuditEvent
+      })
+    ).rejects.toMatchObject({
+      code: "forbidden",
+      message: "Development seller override is unavailable in production.",
       status: 403
     });
 
@@ -212,7 +245,13 @@ function createSellerAccountRepository(
 
   return {
     records,
-    async create(record) {
+    async createIfMissing(record) {
+      const existingRecord = records.find((entry) => entry.organizationId === record.organizationId);
+
+      if (existingRecord) {
+        return existingRecord;
+      }
+
       records.push(record);
       return record;
     },

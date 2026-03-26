@@ -23,7 +23,9 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
 - Verify:
   - sign-in at `/sign-in`
   - workspace create/select flow at `/seller/workspace`
+  - single-workspace auto-activation and multi-workspace POST selection at `/seller/workspace`
   - seller settings and OpenClaw key creation at `/seller/settings`
+  - development override only appears outside production and only for allowlisted sellers
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
 

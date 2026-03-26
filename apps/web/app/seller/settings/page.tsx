@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSellerWorkspacePageData } from "../../../lib/seller/service";
 import { SellerSettingsControls } from "./settings-controls";
 import { signOutAction } from "./actions";
+
+export const metadata: Metadata = {
+  description: "Review seller workspace eligibility and authorize OpenClaw for CMD Market.",
+  title: "Seller Settings"
+};
 
 export default async function SellerSettingsPage() {
   const workspaceData = await getSellerWorkspacePageData(await headers());
@@ -17,7 +23,7 @@ export default async function SellerSettingsPage() {
   }
 
   if (workspaceData.flow.kind === "activate") {
-    redirect(`/seller/workspace/activate?organizationId=${workspaceData.flow.organizationId}`);
+    redirect("/seller/workspace");
   }
 
   if (!workspaceData.activeOrganization || !workspaceData.activeSellerAccount) {

@@ -3,6 +3,7 @@ const DEFAULT_DATABASE_URL = "postgres://postgres:postgres@127.0.0.1:5433/cmd_ma
 const DEFAULT_BETTER_AUTH_SECRET = "development-only-secret-change-me";
 
 export const env = {
+  allowDevelopmentOverrides: process.env.NODE_ENV !== "production",
   appBaseUrl: process.env.BETTER_AUTH_URL ?? DEFAULT_APP_BASE_URL,
   betterAuthSecret: process.env.BETTER_AUTH_SECRET ?? DEFAULT_BETTER_AUTH_SECRET,
   databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,

@@ -2,15 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { authApi, createMarketplaceId, sellerAccountRepository } = vi.hoisted(() => ({
   authApi: {
+    createApiKey: vi.fn(),
     createOrganization: vi.fn(),
     getSession: vi.fn(),
+    listApiKeys: vi.fn(),
     listOrganizations: vi.fn(),
     setActiveOrganization: vi.fn(),
     verifyApiKey: vi.fn()
   },
   createMarketplaceId: vi.fn(() => "seller_123"),
   sellerAccountRepository: {
-    create: vi.fn(),
+    createIfMissing: vi.fn(),
     createAuditEvent: vi.fn(),
     findByOrganizationId: vi.fn(),
     findBySellerAccountId: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock("../db/ids", () => ({
 
 vi.mock("../env", () => ({
   env: {
+    allowDevelopmentOverrides: true,
     developmentSellerOverrideEmails: ["allowlisted@example.com"]
   }
 }));
@@ -38,24 +41,36 @@ vi.mock("./repository", () => ({
   sellerAccountRepository
 }));
 
-import { createSellerWorkspace, resolveSellerPublishability, resolveSellerRequestContext } from "./service";
+import {
+  activateSellerWorkspace,
+  createOpenClawApiKey,
+  createSellerWorkspace,
+  overrideSellerEligibility,
+  resolveSellerPublishability,
+  resolveSellerRequestContext
+} from "./service";
+import { env } from "../env";
 
 describe("seller service", () => {
   beforeEach(() => {
     createMarketplaceId.mockReset();
     createMarketplaceId.mockReturnValue("seller_123");
 
+    authApi.createApiKey.mockReset();
     authApi.createOrganization.mockReset();
     authApi.getSession.mockReset();
+    authApi.listApiKeys.mockReset();
     authApi.listOrganizations.mockReset();
     authApi.setActiveOrganization.mockReset();
     authApi.verifyApiKey.mockReset();
 
-    sellerAccountRepository.create.mockReset();
+    sellerAccountRepository.createIfMissing.mockReset();
     sellerAccountRepository.createAuditEvent.mockReset();
     sellerAccountRepository.findByOrganizationId.mockReset();
     sellerAccountRepository.findBySellerAccountId.mockReset();
     sellerAccountRepository.updateEligibility.mockReset();
+
+    env.allowDevelopmentOverrides = true;
   });
 
   it("creates exactly one seller account mapping when a workspace is created", async () => {
@@ -70,8 +85,7 @@ describe("seller service", () => {
       slug: "acme"
     });
     authApi.setActiveOrganization.mockResolvedValue(undefined);
-    sellerAccountRepository.findByOrganizationId.mockResolvedValue(null);
-    sellerAccountRepository.create.mockResolvedValue(
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
       createSellerAccount({
         id: "seller_123",
         organizationId: "org_123"
@@ -83,8 +97,8 @@ describe("seller service", () => {
       slug: "acme"
     });
 
-    expect(sellerAccountRepository.create).toHaveBeenCalledTimes(1);
-    expect(sellerAccountRepository.create).toHaveBeenCalledWith(
+    expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledTimes(1);
+    expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "seller_123",
         organizationId: "org_123"
@@ -122,6 +136,33 @@ describe("seller service", () => {
       },
       ok: true
     });
+  });
+
+  it("activates a seller workspace through the shared service path", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([{ id: "org_123", name: "Acme", slug: "acme" }]);
+    authApi.setActiveOrganization.mockResolvedValue(undefined);
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+
+    await activateSellerWorkspace(new Headers(), "org_123");
+
+    expect(authApi.setActiveOrganization).toHaveBeenCalledWith({
+      body: { organizationId: "org_123" },
+      headers: expect.any(Headers)
+    });
+    expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "seller_123",
+        organizationId: "org_123"
+      })
+    );
   });
 
   it("returns a 409 when a browser session has no active organization", async () => {
@@ -182,6 +223,46 @@ describe("seller service", () => {
     });
   });
 
+  it("creates a single OpenClaw api key for the active workspace", async () => {
+    authApi.listApiKeys
+      .mockResolvedValueOnce({ apiKeys: [] })
+      .mockResolvedValueOnce({
+        apiKeys: [
+          {
+            configId: "openclaw",
+            createdAt: new Date("2026-03-25T12:00:00.000Z"),
+            id: "key_123",
+            lastRequest: null,
+            metadata: { integration: "openclaw" },
+            name: "OpenClaw",
+            permissions: { seller: ["manage"] },
+            prefix: "cmdmkt_",
+            start: "cmdmkt_abcd"
+          }
+        ]
+      });
+    authApi.createApiKey.mockResolvedValue({
+      id: "key_123",
+      key: "cmdmkt_secret"
+    });
+
+    const result = await createOpenClawApiKey(new Headers(), "org_123");
+
+    expect(authApi.createApiKey).toHaveBeenCalledWith({
+      body: {
+        configId: "openclaw",
+        metadata: { integration: "openclaw" },
+        name: "OpenClaw",
+        organizationId: "org_123",
+        permissions: { seller: ["manage"] },
+        prefix: "cmdmkt_"
+      },
+      headers: expect.any(Headers)
+    });
+    expect(result.createdKey.key).toBe("cmdmkt_secret");
+    expect(result.keys).toHaveLength(1);
+  });
+
   it("returns the shared publishability policy for an ineligible seller", async () => {
     authApi.getSession.mockResolvedValue({
       session: { activeOrganizationId: "org_123" },
@@ -229,6 +310,29 @@ describe("seller service", () => {
         organizationId: "org_123"
       })
     });
+  });
+
+  it("blocks the manual override path when development overrides are disabled", async () => {
+    env.allowDevelopmentOverrides = false;
+
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: "org_123" },
+      user: { email: "allowlisted@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([{ id: "org_123", name: "Acme", slug: "acme" }]);
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+
+    await expect(overrideSellerEligibility(new Headers(), "approved for development")).rejects.toMatchObject({
+      code: "forbidden",
+      message: "Development seller override is unavailable in production.",
+      status: 403
+    });
+    expect(sellerAccountRepository.updateEligibility).not.toHaveBeenCalled();
+    expect(sellerAccountRepository.createAuditEvent).not.toHaveBeenCalled();
   });
 });
 

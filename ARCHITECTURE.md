@@ -33,9 +33,10 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 ## Seller Flow
 
 - Browser sellers sign in at `/sign-in`.
-- Seller workspace creation and selection live under `/seller/workspace`.
+- Seller workspace creation and selection live under `/seller/workspace`, with workspace activation handled through a server action instead of a mutating `GET` route.
 - Seller settings and OpenClaw authorization live under `/seller/settings`.
 - Seller request resolution is shared between browser sessions and `x-api-key` requests.
+- Development eligibility override is only available outside production, even when `DEV_SELLER_OVERRIDE_EMAILS` is set.
 - The first seller APIs are:
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
