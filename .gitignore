@@ -1,6 +1,10 @@
 node_modules
 .pnpm-store
 .turbo
+.worktrees/
+.env
+.env.local
+.env.*.local
 .next
 dist
 coverage
@@ -9,4 +13,5 @@ coverage
 docs/tmp/
 docs/plans/drafts/
 docs/references/raw/
+.stitch/designs/
 *.scratch.md

@@ -4,8 +4,14 @@
   "packageManager": "pnpm@9.15.5",
   "scripts": {
     "build": "turbo build",
+    "db:generate": "pnpm --filter @cmd-market/web db:generate",
+    "db:migrate": "pnpm --filter @cmd-market/web db:migrate",
+    "db:start": "docker compose up -d postgres",
+    "db:stop": "docker compose down",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "postinstall": "pnpm --filter @cmd-market/web db:generate",
+    "test": "turbo test",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {

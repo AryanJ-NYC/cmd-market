@@ -6,14 +6,49 @@
 - Monorepo runner: `turbo`
 - App framework: Next.js App Router
 - Styling: Tailwind CSS v4
+- Database: PostgreSQL 16 via Docker Compose
+- ORM: Prisma
+- Auth: BetterAuth
+
+## Environment
+
+- Copy `apps/web/.env.example` to `apps/web/.env`.
+- Local PostgreSQL defaults to `postgres://postgres:postgres@127.0.0.1:5433/cmd_market`.
+- `BETTER_AUTH_SECRET` should be changed from the example value before sharing credentials or deploying.
+- Twitter/X auth is optional for local development until you need the full sign-in flow.
 
 ## Commands
 
 - `pnpm install`
+- `pnpm db:start`
+- `pnpm db:stop`
+- `pnpm db:generate`
+- `pnpm db:migrate`
 - `pnpm dev`
 - `pnpm build`
 - `pnpm lint`
 - `pnpm typecheck`
+- `pnpm test`
+
+## Seller Workspace Slice
+
+- BetterAuth is mounted at `/api/auth/*`.
+- Seller APIs live at:
+  - `GET /api/seller/context`
+  - `GET /api/seller/publishability`
+- Seller UI entry points live at:
+  - `/sign-in`
+  - `/seller/workspace`
+  - `/seller/settings`
+- OpenClaw authorization is currently limited to one organization-owned API key per seller workspace.
+
+## Database Workflow
+
+- Schema source of truth: `apps/web/prisma/schema.prisma`
+- Prisma config: `apps/web/prisma.config.ts`
+- Generated SQL migrations: `apps/web/prisma/migrations/`
+- Use `pnpm db:migrate` after schema changes instead of hand-writing SQL migrations.
+- The Prisma client is regenerated on install through the root `postinstall` hook, and can be regenerated manually with `pnpm db:generate`.
 
 ## Current Conventions
 
