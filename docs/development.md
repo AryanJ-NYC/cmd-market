@@ -15,9 +15,8 @@
 - Copy `apps/web/.env.example` to `apps/web/.env`.
 - Local PostgreSQL defaults to `postgres://postgres:postgres@127.0.0.1:5433/cmd_market`.
 - `apps/web/lib/env.ts` validates server env with `@t3-oss/env-nextjs`.
-- `BETTER_AUTH_SECRET` is required for production builds and should be changed from the example value before sharing credentials or deploying.
-- `X_CONSUMER_KEY` and `X_CONSUMER_SECRET` are the canonical X auth env vars for development and production. Tests can omit them.
-- Legacy `TWITTER_CLIENT_ID` and `TWITTER_CLIENT_SECRET` are still accepted as temporary fallbacks while local environments are updated.
+- Better Auth resolves its base URL dynamically from the request host and only allows `localhost:*`, `*.vercel.app`, `cmd.market`, `www.cmd.market`, and `testnet.cmd.market`.
+- `BETTER_AUTH_SECRET`, `DATABASE_URL`, `X_CONSUMER_KEY`, and `X_CONSUMER_SECRET` are required in every environment where the app boots.
 
 ## Commands
 

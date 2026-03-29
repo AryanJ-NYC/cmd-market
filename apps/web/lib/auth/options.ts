@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key";
+import { getAuthBaseUrl } from "./base-url";
 import { sellerAccessControl, sellerOrganizationRoles } from "./access";
 import { createMarketplaceId } from "../db/ids";
 import { prisma } from "../db/client";
@@ -17,7 +18,7 @@ import {
 } from "../seller/workspace";
 
 const authOptions = {
-  baseURL: env.appBaseUrl,
+  baseURL: getAuthBaseUrl(env.nodeEnv),
   database: prismaAdapter(prisma, {
     provider: "postgresql"
   }),

@@ -1,11 +1,15 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-const DEFAULT_DATABASE_URL = "postgres://postgres:postgres@127.0.0.1:5433/cmd_market";
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is required.");
+}
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL
+    url: databaseUrl
   },
   migrations: {
     path: "prisma/migrations"
