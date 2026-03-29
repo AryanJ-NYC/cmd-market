@@ -25,9 +25,11 @@
 - `pnpm db:start`
 - `pnpm db:stop`
 - `pnpm db:generate`
+- `pnpm db:deploy`
 - `pnpm db:migrate`
 - `pnpm dev`
 - `pnpm build`
+- `pnpm vercel-build`
 - `pnpm lint`
 - `pnpm typecheck`
 - `pnpm test`
@@ -50,8 +52,10 @@
 - Schema source of truth: `apps/web/prisma/schema.prisma`
 - Prisma config: `apps/web/prisma.config.ts`
 - Generated SQL migrations: `apps/web/prisma/migrations/`
+- Deploy-safe migration command: `pnpm db:deploy`
 - Use `pnpm db:migrate` after schema changes instead of hand-writing SQL migrations.
 - The Prisma client is regenerated on install through the root `postinstall` hook, and can be regenerated manually with `pnpm db:generate`.
+- Vercel runs `pnpm vercel-build`, which applies `prisma migrate deploy` before `pnpm build`.
 
 ## Current Conventions
 

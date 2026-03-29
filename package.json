@@ -4,6 +4,7 @@
   "packageManager": "pnpm@9.15.5",
   "scripts": {
     "build": "turbo build",
+    "db:deploy": "pnpm --filter @cmd-market/web db:deploy",
     "db:generate": "pnpm --filter @cmd-market/web db:generate",
     "db:migrate": "pnpm --filter @cmd-market/web db:migrate",
     "db:start": "docker compose up -d postgres",
@@ -12,7 +13,8 @@
     "lint": "turbo lint",
     "postinstall": "pnpm --filter @cmd-market/web db:generate",
     "test": "turbo test",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "vercel-build": "pnpm db:deploy && pnpm build"
   },
   "devDependencies": {
     "turbo": "2.8.16"
