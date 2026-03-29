@@ -69,6 +69,7 @@
 This repo follows a harness-style progressive disclosure model:
 
 - `README.md` and `AGENTS.md` are entrypoints
+- `apps/web/public/llms.txt` is served at `/llms.txt` for LLM and agent guidance
 - durable truth lives in focused docs
 - plans live in `docs/plans/`
 - scratch notes do not belong in version control

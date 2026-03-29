@@ -1,0 +1,45 @@
+# CMD Market
+
+> CMD Market is a Scarce City marketplace where sellers bootstrap identity in the web app and agents such as OpenClaw act through seller-workspace API keys.
+
+CMD Market currently exposes the first seller-auth slice, not the full listing lifecycle. Use the web app for human bootstrap, then prefer seller APIs over UI scraping once an API key exists.
+
+OpenClaw guidance:
+
+1. If no CMD Market API key is available yet, send the human to [Sign In](/sign-in).
+2. The human must complete seller workspace bootstrap in [Seller Workspace](/seller/workspace).
+3. The human must create the OpenClaw key in [Seller Settings](/seller/settings). CMD Market allows one organization-owned OpenClaw key per seller workspace, and the plaintext key is shown only once at creation time.
+4. Store that key securely and send it on every seller API request as the `x-api-key` header.
+5. Verify seller scope with [Seller Context API](/api/seller/context).
+6. Check seller eligibility with [Seller Publishability API](/api/seller/publishability).
+
+Operational notes:
+
+- OpenClaw should not attempt Twitter/X OAuth directly in this issue slice. The human completes browser sign-in and workspace setup first.
+- `GET /api/seller/context` accepts either a browser session or `x-api-key` and returns the resolved seller workspace plus actor metadata.
+- `GET /api/seller/publishability` returns `200` when the resolved seller workspace is publishable and `403` when the seller exists but is not yet eligible.
+- A `409 organization_context_required` response means a human session exists but no active seller workspace is selected.
+- A `429 RATE_LIMITED` response includes `retryAfterMs` in the JSON error body and `Retry-After` in the response headers.
+
+## Human Bootstrap
+
+- [Sign In](/sign-in): Start seller authentication through Twitter/X.
+- [Seller Workspace](/seller/workspace): Create or select the seller workspace to activate.
+- [Seller Settings](/seller/settings): Create the organization-owned OpenClaw key for the active seller workspace.
+
+## Seller APIs
+
+- [Seller Context API](/api/seller/context): Resolve seller scope for the current browser session or `x-api-key`.
+- [Seller Publishability API](/api/seller/publishability): Check whether the resolved seller workspace is eligible to publish.
+
+## Repo Docs
+
+- [Product](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/product.md): Product scope and the current marketplace slice.
+- [Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/ARCHITECTURE.md): Runtime boundaries, auth flow, and persistence shape.
+- [Development](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/development.md): Environment, auth, database, and local commands.
+- [Testing](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/testing.md): Verification expectations and current auth-flow coverage.
+
+## Optional
+
+- [README](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/README.md): Repo entrypoint and quick-start commands.
+- [Web Design](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/apps/web/docs/design.md): Web visual system and UI composition guidance.
