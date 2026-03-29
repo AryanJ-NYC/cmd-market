@@ -85,7 +85,7 @@ export async function createOpenClawApiKey(headers: HeadersLike, organizationId:
 
 export async function createSellerWorkspace(headers: HeadersLike, input: CreateSellerWorkspaceInput) {
   const requestHeaders = toHeaders(headers);
-  await requireSellerSession(requestHeaders);
+  const session = await requireSellerSession(requestHeaders);
 
   const organizations = await listSellerOrganizations(requestHeaders);
   assertWorkspaceCreationAllowed({ organizations });
@@ -94,9 +94,9 @@ export async function createSellerWorkspace(headers: HeadersLike, input: CreateS
     body: {
       keepCurrentActiveOrganization: false,
       name: input.name,
-      slug: input.slug
-    },
-    headers: requestHeaders
+      slug: input.slug,
+      userId: session.user.id
+    }
   });
 
   await ensureSellerAccountForOrganization({
@@ -233,6 +233,7 @@ export async function overrideSellerEligibility(headers: HeadersLike, note: stri
   }
 
   return applyDevelopmentEligibilityOverride({
+    auditEventId: createMarketplaceId(),
     actorUserEmail: workspaceData.session.email,
     actorUserId: workspaceData.session.id,
     allowlistedEmails: env.developmentSellerOverrideEmails,
@@ -240,22 +241,7 @@ export async function overrideSellerEligibility(headers: HeadersLike, note: stri
     note,
     now: new Date(),
     repository: sellerAccountRepository,
-    sellerAccountId: workspaceData.activeSellerAccount.id,
-    writeAuditEvent: async (event) => {
-      await sellerAccountRepository.createAuditEvent({
-        action: event.action,
-        actorApiKeyId: event.actorApiKeyId,
-        actorType: event.actorType,
-        actorUserId: event.actorUserId,
-        createdAt: event.createdAt,
-        entityId: event.entityId,
-        entityTable: event.entityTable,
-        id: createMarketplaceId(),
-        metadata: event.metadata,
-        note: typeof event.metadata.note === "string" ? event.metadata.note : null,
-        sellerAccountId: event.sellerAccountId
-      });
-    }
+    sellerAccountId: workspaceData.activeSellerAccount.id
   });
 }
 
@@ -273,11 +259,14 @@ export async function resolveSellerRequestContext(request: Request): Promise<Sel
     });
 
     if (!verification.valid || !verification.key) {
+      const retryAfterMs = getApiKeyRetryAfterMs(verification.error);
+
       return {
         code: verification.error?.code ?? "unauthorized",
-        message: "Valid seller API key is required.",
+        message: getApiKeyVerificationMessage(verification.error),
         ok: false,
-        status: 401
+        retryAfterMs,
+        status: verification.error?.code === "RATE_LIMITED" ? 429 : 401
       };
     }
 
@@ -300,15 +289,6 @@ export async function resolveSellerRequestContext(request: Request): Promise<Sel
   const session = await auth.api.getSession({ headers: request.headers });
   const organizations = session ? await listSellerOrganizations(request.headers) : [];
   const sessionActiveOrganizationId = session ? readActiveOrganizationId(session.session) : null;
-
-  if (sessionActiveOrganizationId) {
-    await ensureSellerAccountForOrganization({
-      organizationId: sessionActiveOrganizationId,
-      repository: sellerAccountRepository,
-      createId: createMarketplaceId,
-      now: new Date()
-    });
-  }
 
   return resolveSellerContextFromSession({
     membershipOrganizationIds: organizations.map((organization) => organization.id),
@@ -366,6 +346,30 @@ function isDevelopmentOverrideAllowed(email: string) {
 
 function readActiveOrganizationId(session: Record<string, unknown>) {
   return typeof session.activeOrganizationId === "string" ? session.activeOrganizationId : null;
+}
+
+function getApiKeyVerificationMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+
+  return "Valid seller API key is required.";
+}
+
+function getApiKeyRetryAfterMs(error: unknown) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "details" in error &&
+    typeof error.details === "object" &&
+    error.details !== null &&
+    "tryAgainIn" in error.details &&
+    typeof error.details.tryAgainIn === "number"
+  ) {
+    return error.details.tryAgainIn;
+  }
+
+  return undefined;
 }
 
 function toHeaders(headers: HeadersLike): Headers {

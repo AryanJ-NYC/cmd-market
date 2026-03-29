@@ -11,7 +11,7 @@
     "db:stop": "docker compose down",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "postinstall": "pnpm --filter @cmd-market/web db:generate",
+    "postinstall": "node ./scripts/postinstall.mjs",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "vercel-build": "pnpm db:deploy && pnpm build"

@@ -9,10 +9,19 @@ export async function GET(request: Request) {
       {
         error: {
           code: result.code,
-          message: result.message
+          message: result.message,
+          retryAfterMs: result.retryAfterMs ?? null
         }
       },
-      { status: result.status }
+      {
+        headers:
+          typeof result.retryAfterMs === "number"
+            ? {
+                "Retry-After": String(Math.ceil(result.retryAfterMs / 1000))
+              }
+            : undefined,
+        status: result.status
+      }
     );
   }
 

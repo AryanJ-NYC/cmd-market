@@ -16,11 +16,10 @@ const { authApi, createMarketplaceId, sellerAccountRepository } = vi.hoisted(() 
   },
   createMarketplaceId: vi.fn(() => "seller_123"),
   sellerAccountRepository: {
+    applyDevelopmentEligibilityOverride: vi.fn(),
     createIfMissing: vi.fn(),
-    createAuditEvent: vi.fn(),
     findByOrganizationId: vi.fn(),
-    findBySellerAccountId: vi.fn(),
-    updateEligibility: vi.fn()
+    findBySellerAccountId: vi.fn()
   }
 }));
 
@@ -68,11 +67,10 @@ describe("seller service", () => {
     authApi.setActiveOrganization.mockReset();
     authApi.verifyApiKey.mockReset();
 
+    sellerAccountRepository.applyDevelopmentEligibilityOverride.mockReset();
     sellerAccountRepository.createIfMissing.mockReset();
-    sellerAccountRepository.createAuditEvent.mockReset();
     sellerAccountRepository.findByOrganizationId.mockReset();
     sellerAccountRepository.findBySellerAccountId.mockReset();
-    sellerAccountRepository.updateEligibility.mockReset();
 
     env.allowDevelopmentOverrides = true;
   });
@@ -99,6 +97,15 @@ describe("seller service", () => {
     await createSellerWorkspace(new Headers(), {
       name: "Acme",
       slug: "acme"
+    });
+
+    expect(authApi.createOrganization).toHaveBeenCalledWith({
+      body: {
+        keepCurrentActiveOrganization: false,
+        name: "Acme",
+        slug: "acme",
+        userId: "user_123"
+      }
     });
 
     expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledTimes(1);
@@ -225,6 +232,64 @@ describe("seller service", () => {
       },
       ok: true
     });
+  });
+
+  it("preserves rate-limited api key failures as 429 responses", async () => {
+    authApi.verifyApiKey.mockResolvedValue({
+      error: {
+        code: "RATE_LIMITED",
+        details: {
+          tryAgainIn: 60000
+        },
+        message: "Rate limit exceeded."
+      },
+      key: null,
+      valid: false
+    });
+
+    const result = await resolveSellerRequestContext(
+      new Request("https://example.com/api/seller/context", {
+        headers: {
+          "x-api-key": "cmdmkt_secret"
+        }
+      })
+    );
+
+    expect(result).toEqual({
+      code: "RATE_LIMITED",
+      message: "Rate limit exceeded.",
+      ok: false,
+      retryAfterMs: 60000,
+      status: 429
+    });
+  });
+
+  it("does not create a seller account for a stale active organization outside the user's memberships", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: "org_stale" },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([{ id: "org_123", name: "Acme", slug: "acme" }]);
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+
+    const result = await resolveSellerRequestContext(new Request("https://example.com/api/seller/context"));
+
+    expect(result).toEqual({
+      code: "forbidden",
+      message: "Authenticated user is not a member of the active seller workspace.",
+      ok: false,
+      status: 403
+    });
+    expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledTimes(1);
+    expect(sellerAccountRepository.createIfMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_123"
+      })
+    );
   });
 
   it("creates a single OpenClaw api key for the active workspace", async () => {
@@ -355,14 +420,21 @@ describe("seller service", () => {
         organizationId: "org_123"
       })
     );
+    sellerAccountRepository.applyDevelopmentEligibilityOverride.mockResolvedValue(
+      createSellerAccount({
+        listingEligibilityNote: "approved for development",
+        listingEligibilitySource: "manual_override",
+        listingEligibilityStatus: "eligible",
+        organizationId: "org_123"
+      })
+    );
 
     await expect(overrideSellerEligibility(new Headers(), "approved for development")).rejects.toMatchObject({
       code: "forbidden",
       message: "Development seller override is unavailable in production.",
       status: 403
     });
-    expect(sellerAccountRepository.updateEligibility).not.toHaveBeenCalled();
-    expect(sellerAccountRepository.createAuditEvent).not.toHaveBeenCalled();
+    expect(sellerAccountRepository.applyDevelopmentEligibilityOverride).not.toHaveBeenCalled();
   });
 });
 

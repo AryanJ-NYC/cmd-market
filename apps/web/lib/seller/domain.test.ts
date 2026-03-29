@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   applyDevelopmentEligibilityOverride,
   ensureSellerAccountForOrganization,
@@ -144,9 +144,9 @@ describe("seller domain", () => {
         organizationId: "org_123"
       })
     ]);
-    const writeAuditEvent = vi.fn(async () => undefined);
 
     const result = await applyDevelopmentEligibilityOverride({
+      auditEventId: "audit_123",
       actorUserId: "user_123",
       actorUserEmail: "seller@example.com",
       allowlistedEmails: ["seller@example.com"],
@@ -154,26 +154,28 @@ describe("seller domain", () => {
       note: "approved for development",
       now: fixedNow(),
       sellerAccountId: "seller_123",
-      repository: repo,
-      writeAuditEvent
+      repository: repo
     });
 
     expect(result.listingEligibilityStatus).toBe("eligible");
     expect(result.listingEligibilitySource).toBe("manual_override");
     expect(result.listingEligibilityNote).toBe("approved for development");
-    expect(writeAuditEvent).toHaveBeenCalledWith({
-      action: "seller_account.manual_override_approved",
-      actorApiKeyId: null,
-      actorType: "user",
-      actorUserId: "user_123",
-      createdAt: fixedNow(),
-      entityId: "seller_123",
-      entityTable: "seller_account",
-      metadata: {
-        note: "approved for development"
-      },
-      sellerAccountId: "seller_123"
-    });
+    expect(repo.auditEvents).toEqual([
+      {
+        action: "seller_account.manual_override_approved",
+        actorApiKeyId: null,
+        actorType: "user",
+        actorUserId: "user_123",
+        createdAt: fixedNow(),
+        entityId: "seller_123",
+        entityTable: "seller_account",
+        id: "audit_123",
+        metadata: {
+          note: "approved for development"
+        },
+        sellerAccountId: "seller_123"
+      }
+    ]);
   });
 
   it("rejects development overrides for non-allowlisted sellers", async () => {
@@ -183,7 +185,6 @@ describe("seller domain", () => {
         organizationId: "org_123"
       })
     ]);
-    const writeAuditEvent = vi.fn(async () => undefined);
 
     await expect(
       applyDevelopmentEligibilityOverride({
@@ -195,7 +196,7 @@ describe("seller domain", () => {
         now: fixedNow(),
         sellerAccountId: "seller_123",
         repository: repo,
-        writeAuditEvent
+        auditEventId: "audit_123"
       })
     ).rejects.toMatchObject({
       code: "forbidden",
@@ -203,7 +204,7 @@ describe("seller domain", () => {
     });
 
     expect(repo.records[0]?.listingEligibilityStatus).toBe("pending");
-    expect(writeAuditEvent).not.toHaveBeenCalled();
+    expect(repo.auditEvents).toHaveLength(0);
   });
 
   it("rejects development overrides when the environment gate is disabled", async () => {
@@ -213,10 +214,9 @@ describe("seller domain", () => {
         organizationId: "org_123"
       })
     ]);
-    const writeAuditEvent = vi.fn(async () => undefined);
-
     await expect(
       applyDevelopmentEligibilityOverride({
+        auditEventId: "audit_123",
         actorUserId: "user_123",
         actorUserEmail: "seller@example.com",
         allowlistedEmails: ["seller@example.com"],
@@ -224,8 +224,7 @@ describe("seller domain", () => {
         note: "approved for development",
         now: fixedNow(),
         sellerAccountId: "seller_123",
-        repository: repo,
-        writeAuditEvent
+        repository: repo
       })
     ).rejects.toMatchObject({
       code: "forbidden",
@@ -234,16 +233,51 @@ describe("seller domain", () => {
     });
 
     expect(repo.records[0]?.listingEligibilityStatus).toBe("pending");
-    expect(writeAuditEvent).not.toHaveBeenCalled();
+    expect(repo.auditEvents).toHaveLength(0);
+  });
+
+  it("leaves seller eligibility unchanged when the repository override write fails", async () => {
+    const repo = createSellerAccountRepository([
+      createSellerAccount({
+        id: "seller_123",
+        organizationId: "org_123"
+      })
+    ]);
+
+    repo.overrideError = new Error("audit write failed");
+
+    await expect(
+      applyDevelopmentEligibilityOverride({
+        auditEventId: "audit_123",
+        actorUserId: "user_123",
+        actorUserEmail: "seller@example.com",
+        allowlistedEmails: ["seller@example.com"],
+        developmentOverrideEnabled: true,
+        note: "approved for development",
+        now: fixedNow(),
+        sellerAccountId: "seller_123",
+        repository: repo
+      })
+    ).rejects.toThrow("audit write failed");
+
+    expect(repo.records[0]?.listingEligibilityStatus).toBe("pending");
+    expect(repo.auditEvents).toHaveLength(0);
   });
 });
 
 function createSellerAccountRepository(
   initialRecords: SellerAccountRecord[] = []
-): SellerAccountRepository & { records: SellerAccountRecord[] } {
+): SellerAccountRepository & {
+  auditEvents: AuditEventRecord[];
+  overrideError: Error | null;
+  records: SellerAccountRecord[];
+} {
   const records = [...initialRecords];
+  const auditEvents: AuditEventRecord[] = [];
 
   return {
+    auditEvents,
+    overrideError: null,
     records,
     async createIfMissing(record) {
       const existingRecord = records.find((entry) => entry.organizationId === record.organizationId);
@@ -261,23 +295,41 @@ function createSellerAccountRepository(
     async findBySellerAccountId(sellerAccountId) {
       return records.find((record) => record.id === sellerAccountId) ?? null;
     },
-    async updateEligibility({
+    async applyDevelopmentEligibilityOverride({
+      actorUserId,
+      auditEventId,
+      note,
       sellerAccountId,
-      listingEligibilityNote,
-      listingEligibilitySource,
-      listingEligibilityStatus,
       updatedAt
     }) {
+      if (this.overrideError) {
+        throw this.overrideError;
+      }
+
       const record = records.find((entry) => entry.id === sellerAccountId);
 
       if (!record) {
-        throw new Error(`Missing seller account: ${sellerAccountId}`);
+        return null;
       }
 
-      record.listingEligibilityStatus = listingEligibilityStatus;
-      record.listingEligibilitySource = listingEligibilitySource;
-      record.listingEligibilityNote = listingEligibilityNote;
+      record.listingEligibilityStatus = "eligible";
+      record.listingEligibilitySource = "manual_override";
+      record.listingEligibilityNote = note;
       record.updatedAt = updatedAt;
+      auditEvents.push({
+        action: "seller_account.manual_override_approved",
+        actorApiKeyId: null,
+        actorType: "user",
+        actorUserId,
+        createdAt: updatedAt,
+        entityId: sellerAccountId,
+        entityTable: "seller_account",
+        id: auditEventId,
+        metadata: {
+          note
+        },
+        sellerAccountId
+      });
 
       return record;
     }
@@ -303,3 +355,16 @@ function createSellerAccount(
 function fixedNow() {
   return new Date("2026-03-25T18:00:00.000Z");
 }
+
+type AuditEventRecord = {
+  id: string;
+  entityTable: string;
+  entityId: string;
+  action: string;
+  actorType: "user" | "api_key" | "system" | "admin";
+  actorUserId: string | null;
+  actorApiKeyId: string | null;
+  sellerAccountId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: Date;
+};

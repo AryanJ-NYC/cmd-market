@@ -9,10 +9,19 @@ export async function GET(request: Request) {
       {
         error: {
           code: context.code,
-          message: context.message
+          message: context.message,
+          retryAfterMs: context.retryAfterMs ?? null
         }
       },
-      { status: context.status }
+      {
+        headers:
+          typeof context.retryAfterMs === "number"
+            ? {
+                "Retry-After": String(Math.ceil(context.retryAfterMs / 1000))
+              }
+            : undefined,
+        status: context.status
+      }
     );
   }
 

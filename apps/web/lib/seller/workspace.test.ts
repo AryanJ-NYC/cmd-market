@@ -6,7 +6,8 @@ import {
   SellerWorkspaceError,
   buildOpenClawApiKeyRequest,
   getSellerWorkspaceFlow,
-  assertWorkspaceCreationAllowed
+  assertWorkspaceCreationAllowed,
+  shouldAutoSubmitWorkspaceActivation
 } from "./workspace";
 
 describe("seller workspace", () => {
@@ -105,5 +106,10 @@ describe("seller workspace", () => {
         "OpenClaw is already authorized for this seller workspace."
       )
     );
+  });
+
+  it("disables auto-submit when a workspace activation error is already present", () => {
+    expect(shouldAutoSubmitWorkspaceActivation(null)).toBe(true);
+    expect(shouldAutoSubmitWorkspaceActivation("Activation failed.")).toBe(false);
   });
 });

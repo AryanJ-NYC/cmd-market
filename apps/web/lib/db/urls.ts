@@ -1,3 +1,7 @@
+function hasPrismaCliDatabaseUrl(runtimeEnv: DatabaseUrlEnvironment) {
+  return Boolean(runtimeEnv.NEON_DATABASE_URL_UNPOOLED);
+}
+
 function getPrismaCliDatabaseUrl(runtimeEnv: DatabaseUrlEnvironment) {
   const databaseUrl = runtimeEnv.NEON_DATABASE_URL_UNPOOLED;
 
@@ -18,7 +22,7 @@ function getRuntimeDatabaseUrl(runtimeEnv: DatabaseUrlEnvironment) {
   return databaseUrl;
 }
 
-export { getPrismaCliDatabaseUrl, getRuntimeDatabaseUrl };
+export { getPrismaCliDatabaseUrl, getRuntimeDatabaseUrl, hasPrismaCliDatabaseUrl };
 
 type DatabaseUrlEnvironment = Record<string, string | undefined> & {
   NEON_DATABASE_URL?: string;

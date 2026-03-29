@@ -137,6 +137,7 @@ export function getSellerPublishability(
 }
 
 export async function applyDevelopmentEligibilityOverride({
+  auditEventId,
   actorUserId,
   actorUserEmail,
   allowlistedEmails,
@@ -144,8 +145,7 @@ export async function applyDevelopmentEligibilityOverride({
   note,
   now,
   sellerAccountId,
-  repository,
-  writeAuditEvent
+  repository
 }: ApplyDevelopmentEligibilityOverrideInput): Promise<SellerAccountRecord> {
   if (!developmentOverrideEnabled) {
     throw new SellerDomainError(
@@ -165,27 +165,17 @@ export async function applyDevelopmentEligibilityOverride({
     throw new SellerDomainError(404, "seller_account_not_found", "Seller account does not exist.");
   }
 
-  const updatedAccount = await repository.updateEligibility({
+  const updatedAccount = await repository.applyDevelopmentEligibilityOverride({
+    actorUserId,
+    auditEventId,
+    note,
     sellerAccountId,
-    listingEligibilityStatus: "eligible",
-    listingEligibilitySource: "manual_override",
-    listingEligibilityNote: note,
     updatedAt: now
   });
 
-  await writeAuditEvent({
-    entityTable: "seller_account",
-    entityId: sellerAccountId,
-    action: "seller_account.manual_override_approved",
-    actorType: "user",
-    actorUserId,
-    actorApiKeyId: null,
-    sellerAccountId,
-    metadata: {
-      note
-    },
-    createdAt: now
-  });
+  if (!updatedAccount) {
+    throw new SellerDomainError(404, "seller_account_not_found", "Seller account does not exist.");
+  }
 
   return updatedAccount;
 }
@@ -241,6 +231,7 @@ type ResolveSellerContextFromApiKeyInput = {
 };
 
 type ApplyDevelopmentEligibilityOverrideInput = {
+  auditEventId: string;
   actorUserId: string;
   actorUserEmail: string;
   allowlistedEmails: string[];
@@ -249,10 +240,9 @@ type ApplyDevelopmentEligibilityOverrideInput = {
   now: Date;
   sellerAccountId: string;
   repository: SellerAccountRepository;
-  writeAuditEvent: AuditEventWriter;
 };
 
-type ResolutionErrorStatus = 401 | 403 | 409;
+type ResolutionErrorStatus = 401 | 403 | 409 | 429;
 
 type SessionActor = {
   userId: string;
@@ -274,32 +264,20 @@ export type SellerPublishabilityIssue = {
   message: string;
 };
 
-type AuditEventWriter = (event: AuditEventInput) => Promise<void>;
-
-type AuditEventInput = {
-  entityTable: string;
-  entityId: string;
-  action: string;
-  actorType: "user" | "api_key" | "system" | "admin";
-  actorUserId: string | null;
-  actorApiKeyId: string | null;
-  sellerAccountId: string | null;
-  metadata: Record<string, unknown>;
-  createdAt: Date;
-};
-
 export type SellerAccountRepository = {
+  applyDevelopmentEligibilityOverride(
+    input: ApplyDevelopmentEligibilityOverrideRepositoryInput
+  ): Promise<SellerAccountRecord | null>;
   createIfMissing(record: SellerAccountRecord): Promise<SellerAccountRecord>;
   findByOrganizationId(organizationId: string): Promise<SellerAccountRecord | null>;
   findBySellerAccountId(sellerAccountId: string): Promise<SellerAccountRecord | null>;
-  updateEligibility(input: UpdateSellerEligibilityInput): Promise<SellerAccountRecord>;
 };
 
-type UpdateSellerEligibilityInput = {
+type ApplyDevelopmentEligibilityOverrideRepositoryInput = {
+  actorUserId: string;
+  auditEventId: string;
+  note: string | null;
   sellerAccountId: string;
-  listingEligibilityStatus: SellerEligibilityStatus;
-  listingEligibilitySource: SellerEligibilitySource;
-  listingEligibilityNote: string | null;
   updatedAt: Date;
 };
 
@@ -341,4 +319,5 @@ export type SellerContextResolution =
       status: ResolutionErrorStatus;
       code: string;
       message: string;
+      retryAfterMs?: number;
     };

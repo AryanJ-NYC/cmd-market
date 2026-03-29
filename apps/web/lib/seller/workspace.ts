@@ -66,6 +66,10 @@ export function buildOpenClawApiKeyRequest({
   };
 }
 
+export function shouldAutoSubmitWorkspaceActivation(error: string | null) {
+  return error === null;
+}
+
 export class SellerWorkspaceError extends Error {
   constructor(
     public readonly code: SellerWorkspaceErrorCode,

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createWorkspaceAction } from "./actions";
 import { WorkspaceActivationForm } from "./workspace-activation-form";
 import { getSellerWorkspacePageData } from "../../../lib/seller/service";
+import { shouldAutoSubmitWorkspaceActivation } from "../../../lib/seller/workspace";
 
 export const metadata: Metadata = {
   description: "Create, select, and activate your CMD Market seller workspace.",
@@ -48,7 +49,7 @@ export default async function SellerWorkspacePage({
                 CMD Market found exactly one seller workspace for your account, so it can become active automatically.
               </p>
               <WorkspaceActivationForm
-                autoSubmit
+                autoSubmit={shouldAutoSubmitWorkspaceActivation(error)}
                 buttonLabel="Continue to Seller Settings"
                 organizationId={workspaceData.flow.organizationId}
               />

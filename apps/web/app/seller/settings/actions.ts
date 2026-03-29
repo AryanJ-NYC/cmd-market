@@ -40,8 +40,10 @@ export async function createOpenClawApiKeyAction(
       status: "success"
     };
   } catch (caughtError) {
+    const refreshedWorkspaceData = await getSellerWorkspacePageData(requestHeaders);
+
     return {
-      apiKeys: workspaceData.apiKeys.map(serializeApiKeySummary),
+      apiKeys: refreshedWorkspaceData?.apiKeys.map(serializeApiKeySummary) ?? [],
       message: getActionErrorMessage(caughtError, "OpenClaw authorization could not be created."),
       plaintextKey: null,
       status: "error"

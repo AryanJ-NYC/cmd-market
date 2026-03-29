@@ -37,7 +37,8 @@ const authOptions = {
     nextCookies(),
     organization({
       ac: sellerAccessControl,
-      allowUserToCreateOrganization: true,
+      allowUserToCreateOrganization: false,
+      organizationLimit: 1,
       organizationHooks: {
         afterCreateOrganization: async ({ organization }) => {
           await ensureSellerAccountForOrganization({

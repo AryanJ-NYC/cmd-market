@@ -3,8 +3,6 @@ import { prisma } from "../db/client";
 import type {
   SellerAccountRecord,
   SellerAccountRepository,
-  SellerEligibilitySource,
-  SellerEligibilityStatus,
   SellerStatus
 } from "./domain";
 
@@ -72,44 +70,58 @@ export class PrismaSellerAccountRepository implements SellerAccountRepository {
     return sellerAccounts.map(mapSellerAccountModel);
   }
 
-  async updateEligibility({
+  async applyDevelopmentEligibilityOverride({
+    actorUserId,
+    auditEventId,
+    note,
     sellerAccountId,
-    listingEligibilityStatus,
-    listingEligibilitySource,
-    listingEligibilityNote,
     updatedAt
-  }: UpdateEligibilityInput): Promise<SellerAccountRecord> {
-    const updatedSellerAccount = await this.database.sellerAccount.update({
-      data: {
-        listingEligibilityNote,
-        listingEligibilitySource,
-        listingEligibilityStatus,
-        updatedAt
-      },
-      where: {
-        id: sellerAccountId
+  }: ApplyDevelopmentEligibilityOverrideInput): Promise<SellerAccountRecord> {
+    const updatedSellerAccount = await this.database.$transaction(async (transaction) => {
+      const sellerAccount = await transaction.sellerAccount.findUnique({
+        where: {
+          id: sellerAccountId
+        }
+      });
+
+      if (!sellerAccount) {
+        throw new Error(`Missing seller account: ${sellerAccountId}`);
       }
+
+      const updated = await transaction.sellerAccount.update({
+        data: {
+          listingEligibilityNote: note,
+          listingEligibilitySource: "manual_override",
+          listingEligibilityStatus: "eligible",
+          updatedAt
+        },
+        where: {
+          id: sellerAccountId
+        }
+      });
+
+      await transaction.auditEvent.create({
+        data: {
+          action: "seller_account.manual_override_approved",
+          actorApiKeyId: null,
+          actorType: "user",
+          actorUserId,
+          createdAt: updatedAt,
+          entityId: sellerAccountId,
+          entityTable: "seller_account",
+          id: auditEventId,
+          metadata: {
+            note
+          } as Prisma.InputJsonValue,
+          note,
+          sellerAccountId
+        }
+      });
+
+      return updated;
     });
 
     return mapSellerAccountModel(updatedSellerAccount);
-  }
-
-  async createAuditEvent(input: CreateAuditEventInput) {
-    await this.database.auditEvent.create({
-      data: {
-        action: input.action,
-        actorApiKeyId: input.actorApiKeyId,
-        actorType: input.actorType,
-        actorUserId: input.actorUserId,
-        createdAt: input.createdAt,
-        entityId: input.entityId,
-        entityTable: input.entityTable,
-        id: input.id,
-        metadata: input.metadata as Prisma.InputJsonValue,
-        note: input.note,
-        sellerAccountId: input.sellerAccountId
-      }
-    });
   }
 }
 
@@ -137,24 +149,10 @@ function toSellerStatus(value: string): SellerStatus {
   throw new Error(`Unknown seller status: ${value}`);
 }
 
-type UpdateEligibilityInput = {
-  sellerAccountId: string;
-  listingEligibilityStatus: SellerEligibilityStatus;
-  listingEligibilitySource: SellerEligibilitySource;
-  listingEligibilityNote: string | null;
-  updatedAt: Date;
-};
-
-type CreateAuditEventInput = {
-  id: string;
-  entityTable: string;
-  entityId: string;
-  action: string;
-  actorType: "user" | "api_key" | "system" | "admin";
-  actorUserId: string | null;
-  actorApiKeyId: string | null;
-  sellerAccountId: string | null;
+type ApplyDevelopmentEligibilityOverrideInput = {
+  actorUserId: string;
+  auditEventId: string;
   note: string | null;
-  metadata: Record<string, unknown>;
-  createdAt: Date;
+  sellerAccountId: string;
+  updatedAt: Date;
 };

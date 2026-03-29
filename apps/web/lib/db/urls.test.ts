@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPrismaCliDatabaseUrl, getRuntimeDatabaseUrl } from "./urls";
+import { getPrismaCliDatabaseUrl, getRuntimeDatabaseUrl, hasPrismaCliDatabaseUrl } from "./urls";
 
 describe("database urls", () => {
   it("uses the pooled Neon url for app runtime", () => {
@@ -18,5 +18,14 @@ describe("database urls", () => {
         NEON_DATABASE_URL_UNPOOLED: "postgres://unpooled.example"
       })
     ).toBe("postgres://unpooled.example");
+  });
+
+  it("can detect when Prisma CLI database config is unavailable", () => {
+    expect(hasPrismaCliDatabaseUrl({})).toBe(false);
+    expect(
+      hasPrismaCliDatabaseUrl({
+        NEON_DATABASE_URL_UNPOOLED: "postgres://unpooled.example"
+      })
+    ).toBe(true);
   });
 });
