@@ -38,6 +38,31 @@ describe("prisma seller eligibility schema", () => {
     expect(migration).toContain('"listing_eligibility_status" "SellerEligibilityStatus" NOT NULL');
     expect(migration).toContain('"listing_eligibility_source" "SellerEligibilitySource"');
   });
+
+  it("defines thin listing and listing media models in the schema", () => {
+    const schema = readPrismaFile("schema.prisma");
+
+    expect(schema).toContain("model listing {");
+    expect(schema).toContain("sellerAccountId");
+    expect(schema).toContain('@map("seller_account_id")');
+    expect(schema).toContain('@default("draft")');
+    expect(schema).toContain("model listingMedia {");
+    expect(schema).toContain("assetKey");
+    expect(schema).toContain('@map("asset_key")');
+    expect(schema).toContain("@unique([listingId, assetKey])");
+  });
+
+  it("creates listing and listing_media tables in the checked-in migration", () => {
+    const migration = readPrismaFile("migrations/20260329223047_issue2_draft_listing_media/migration.sql");
+
+    expect(migration).toContain('CREATE TABLE "listing"');
+    expect(migration).toContain('"seller_account_id" TEXT NOT NULL');
+    expect(migration).toContain('CREATE TABLE "listing_media"');
+    expect(migration).toContain('"listing_id" TEXT NOT NULL');
+    expect(migration).toContain(
+      'CREATE UNIQUE INDEX "listing_media_listing_id_asset_key_key" ON "listing_media"("listing_id", "asset_key");'
+    );
+  });
 });
 
 function readPrismaFile(relativePath: string) {

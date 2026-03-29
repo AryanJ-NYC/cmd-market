@@ -28,9 +28,11 @@ model user {
   updatedAt       DateTime     @updatedAt
   accounts        account[]
   auditEvents     auditEvent[] @relation("auditEventActorUser")
+  createdListings listing[]    @relation("listingCreatedByUser")
   invitationsSent invitation[] @relation("invitationInviter")
   members         member[]
   sessions        session[]
+  updatedListings listing[]    @relation("listingUpdatedByUser")
 
   @@map("user")
 }
@@ -157,7 +159,9 @@ model apikey {
   permissions         String?
   metadata            String?
   auditEvents         auditEvent[] @relation("auditEventActorApiKey")
+  createdListings     listing[]    @relation("listingCreatedByApiKey")
   organization        organization @relation("organizationApiKeys", fields: [referenceId], references: [id], onDelete: Cascade)
+  updatedListings     listing[]    @relation("listingUpdatedByApiKey")
 
   @@index([configId])
   @@index([referenceId])
@@ -176,6 +180,7 @@ model sellerAccount {
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
   auditEvents                auditEvent[]
+  listings                   listing[]
   organization               organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("seller_account")
@@ -199,4 +204,40 @@ model auditEvent {
 
   @@index([sellerAccountId])
   @@map("audit_event")
+}
+
+model listing {
+  id               String       @id
+  sellerAccountId  String       @map("seller_account_id")
+  status           String       @default("draft")
+  createdByUserId  String?      @map("created_by_user_id")
+  createdByApiKeyId String?     @map("created_by_api_key_id")
+  updatedByUserId  String?      @map("updated_by_user_id")
+  updatedByApiKeyId String?     @map("updated_by_api_key_id")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  createdByApiKey  apikey?      @relation("listingCreatedByApiKey", fields: [createdByApiKeyId], references: [id], onDelete: SetNull)
+  createdByUser    user?        @relation("listingCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  media            listingMedia[]
+  sellerAccount    sellerAccount @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
+  updatedByApiKey  apikey?      @relation("listingUpdatedByApiKey", fields: [updatedByApiKeyId], references: [id], onDelete: SetNull)
+  updatedByUser    user?        @relation("listingUpdatedByUser", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([sellerAccountId])
+  @@map("listing")
+}
+
+model listingMedia {
+  id         String   @id
+  listingId  String   @map("listing_id")
+  assetKey   String   @map("asset_key")
+  assetType  String   @map("asset_type")
+  altText    String?  @map("alt_text")
+  sortOrder  Int      @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  listing    listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@unique([listingId, assetKey])
+  @@map("listing_media")
 }
