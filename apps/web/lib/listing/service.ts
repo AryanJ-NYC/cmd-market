@@ -2,9 +2,11 @@ import { z } from "zod";
 import { createMarketplaceId } from "../db/ids";
 import { resolveSellerRequestContext } from "../seller/service";
 import {
+  assertUploadedAssetExists,
   buildDraftAssetKey,
   createPresignedUploadRequest,
-  getPublicAssetUrl
+  getPublicAssetUrl,
+  MissingUploadedAssetError
 } from "../storage/spaces";
 import {
   DuplicateListingMediaAssetKeyError,
@@ -181,6 +183,8 @@ export async function attachDraftListingMedia(
   const now = new Date();
 
   try {
+    await Promise.all(input.media.map((item) => assertUploadedAssetExists(item.assetKey)));
+
     const listing = await listingRepository.attachMediaToDraftListing({
       auditEventId: createMarketplaceId(),
       listingId,
@@ -203,6 +207,15 @@ export async function attachDraftListingMedia(
       ok: true
     };
   } catch (error) {
+    if (error instanceof MissingUploadedAssetError) {
+      return {
+        code: "asset_not_uploaded",
+        message: "Uploaded media must exist in storage before it can be attached.",
+        ok: false,
+        status: 409
+      };
+    }
+
     if (error instanceof DuplicateListingMediaAssetKeyError) {
       return {
         code: "duplicate_media_asset_key",

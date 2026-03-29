@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   DuplicateListingMediaAssetKeyError,
+  MissingUploadedAssetError,
   buildDraftAssetKey,
   createMarketplaceId,
   resolveSellerRequestContext,
@@ -14,6 +15,12 @@ const {
       this.name = "DuplicateListingMediaAssetKeyError";
     }
   },
+  MissingUploadedAssetError: class MissingUploadedAssetError extends Error {
+    constructor(assetKey: string) {
+      super(`missing uploaded asset: ${assetKey}`);
+      this.name = "MissingUploadedAssetError";
+    }
+  },
   buildDraftAssetKey: vi.fn(),
   createMarketplaceId: vi.fn(),
   resolveSellerRequestContext: vi.fn(),
@@ -23,6 +30,7 @@ const {
     findListingById: vi.fn()
   },
   storage: {
+    assertUploadedAssetExists: vi.fn(),
     createPresignedUploadRequest: vi.fn(),
     getPublicAssetUrl: vi.fn()
   }
@@ -42,6 +50,7 @@ vi.mock("./repository", () => ({
 }));
 
 vi.mock("../storage/spaces", () => ({
+  MissingUploadedAssetError,
   ...storage,
   buildDraftAssetKey
 }));
@@ -62,6 +71,7 @@ describe("listing service", () => {
     listingRepository.findListingById.mockReset();
     storage.createPresignedUploadRequest.mockReset();
     storage.getPublicAssetUrl.mockReset();
+    storage.assertUploadedAssetExists.mockReset();
   });
 
   it("creates a blank draft listing for a seller browser session", async () => {
@@ -277,6 +287,7 @@ describe("listing service", () => {
   it("attaches uploaded media to a seller-owned draft and derives public urls", async () => {
     resolveSellerRequestContext.mockResolvedValue(createSellerContext());
     listingRepository.findListingById.mockResolvedValue(createListingRecord());
+    storage.assertUploadedAssetExists.mockResolvedValue(undefined);
     listingRepository.attachMediaToDraftListing.mockResolvedValue(
       createListingRecord({
         media: [
@@ -328,6 +339,9 @@ describe("listing service", () => {
         listingId: "lst_123",
         sellerAccountId: "seller_123"
       })
+    );
+    expect(storage.assertUploadedAssetExists).toHaveBeenCalledWith(
+      "listings/drafts/lst_123/asset_123-front.jpg"
     );
   });
 
@@ -390,6 +404,7 @@ describe("listing service", () => {
   it("rejects duplicate media attachment for the same draft cleanly", async () => {
     resolveSellerRequestContext.mockResolvedValue(createSellerContext());
     listingRepository.findListingById.mockResolvedValue(createListingRecord());
+    storage.assertUploadedAssetExists.mockResolvedValue(undefined);
     listingRepository.attachMediaToDraftListing.mockRejectedValue(
       new DuplicateListingMediaAssetKeyError()
     );
@@ -411,6 +426,35 @@ describe("listing service", () => {
     expect(result).toEqual({
       code: "duplicate_media_asset_key",
       message: "This asset is already attached to the draft listing.",
+      ok: false,
+      status: 409
+    });
+  });
+
+  it("rejects media attachment when the uploaded asset does not exist in storage", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext());
+    listingRepository.findListingById.mockResolvedValue(createListingRecord());
+    storage.assertUploadedAssetExists.mockRejectedValue(
+      new MissingUploadedAssetError("listings/drafts/lst_123/asset_123-front.jpg")
+    );
+
+    const result = await attachDraftListingMedia(
+      new Request("https://example.com/api/seller/listings/lst_123/media", { method: "POST" }),
+      "lst_123",
+      {
+        media: [
+          {
+            altText: "Front photo",
+            assetKey: "listings/drafts/lst_123/asset_123-front.jpg",
+            sortOrder: 0
+          }
+        ]
+      }
+    );
+
+    expect(result).toEqual({
+      code: "asset_not_uploaded",
+      message: "Uploaded media must exist in storage before it can be attached.",
       ok: false,
       status: 409
     });

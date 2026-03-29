@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { HeadObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../env";
 
@@ -9,6 +9,13 @@ const SPACES_PUBLIC_BASE_URL = "https://cmd-market-assets.nyc3.cdn.digitaloceans
 const UPLOAD_URL_TTL_SECONDS = 60 * 15;
 
 let spacesClient: S3Client | null = null;
+
+export class MissingUploadedAssetError extends Error {
+  constructor(assetKey: string) {
+    super(`missing uploaded asset: ${assetKey}`);
+    this.name = "MissingUploadedAssetError";
+  }
+}
 
 export async function createPresignedUploadRequest({
   assetKey,
@@ -46,6 +53,23 @@ export function getPublicAssetUrl(assetKey: string) {
   return new URL(assetKey, `${SPACES_PUBLIC_BASE_URL}/`).toString();
 }
 
+export async function assertUploadedAssetExists(assetKey: string) {
+  try {
+    await getSpacesClient().send(
+      new HeadObjectCommand({
+        Bucket: SPACES_BUCKET,
+        Key: assetKey
+      })
+    );
+  } catch (error) {
+    if (isMissingObjectError(error)) {
+      throw new MissingUploadedAssetError(assetKey);
+    }
+
+    throw error;
+  }
+}
+
 function getSpacesClient() {
   if (spacesClient) {
     return spacesClient;
@@ -71,6 +95,21 @@ function sanitizeFilename(filename: string) {
     .replace(/[^a-zA-Z0-9._-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "") || "upload";
+}
+
+function isMissingObjectError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (
+      ("$metadata" in error &&
+        typeof error.$metadata === "object" &&
+        error.$metadata !== null &&
+        "httpStatusCode" in error.$metadata &&
+        error.$metadata.httpStatusCode === 404) ||
+      ("name" in error && (error.name === "NotFound" || error.name === "NoSuchKey"))
+    )
+  );
 }
 
 type BuildDraftAssetKeyInput = {
