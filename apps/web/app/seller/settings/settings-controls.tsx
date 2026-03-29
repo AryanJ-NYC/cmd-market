@@ -47,6 +47,8 @@ export function SellerSettingsControls({
   const eligibilityStatus = eligibilityState.eligibilityStatus ?? initialEligibilityStatus;
   const eligibilitySource = eligibilityState.eligibilitySource ?? initialEligibilitySource;
   const eligibilityNote = eligibilityState.eligibilityNote ?? initialEligibilityNote;
+  const showCreateKeyMessage =
+    createKeyState.message !== null && (createKeyState.status === "error" || createKeyState.plaintextKey === null);
 
   return (
     <div className="space-y-8">
@@ -54,15 +56,16 @@ export function SellerSettingsControls({
         <div className="space-y-2">
           <h2 className="text-lg font-semibold text-stone-50">OpenClaw Authorization</h2>
           <p className="text-sm leading-6 text-stone-400">
-            Issue #1 allows one organization-owned OpenClaw key per seller workspace. The plaintext key is only shown
-            once, at creation time.
+            Connect this seller workspace to OpenClaw with a CMD Market API key. After you create it, paste it into
+            OpenClaw to finish setup. For security, the full key is shown only once.
           </p>
         </div>
 
         <div className="space-y-3">
           {apiKeys.length === 0 ? (
             <div className="rounded-2xl border border-stone-800 bg-stone-900/70 px-4 py-3 text-sm text-stone-400">
-              No OpenClaw key has been created for this workspace yet.
+              No OpenClaw key has been created for this workspace yet. Create one when you are ready to connect this
+              workspace to OpenClaw.
             </div>
           ) : (
             apiKeys.map((apiKey) => (
@@ -81,8 +84,7 @@ export function SellerSettingsControls({
                   <span>Last used {apiKey.lastRequest ? new Date(apiKey.lastRequest).toLocaleString() : "Never"}</span>
                 </div>
                 <p className="text-xs text-stone-500">
-                  Permissions {JSON.stringify(apiKey.permissions ?? {}, null, 0)} • Metadata{" "}
-                  {JSON.stringify(apiKey.metadata ?? {}, null, 0)}
+                  This key lets OpenClaw manage this seller workspace. The full key is hidden after creation.
                 </p>
               </div>
             ))
@@ -90,15 +92,27 @@ export function SellerSettingsControls({
         </div>
 
         {createKeyState.plaintextKey ? (
-          <div className="space-y-2 rounded-2xl border border-emerald-900/70 bg-emerald-950/30 p-4">
-            <p className="text-sm font-medium text-emerald-100">Copy this API key now.</p>
+          <div className="space-y-3 rounded-2xl border border-emerald-900/70 bg-emerald-950/30 p-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-emerald-100">Next step: paste this key into OpenClaw.</p>
+              <p className="text-sm leading-6 text-emerald-200">
+                Copy it now, return to OpenClaw, and paste it when OpenClaw asks for your CMD Market API key. You will
+                not be able to view the full key here again.
+              </p>
+            </div>
             <code className="block overflow-x-auto rounded-xl bg-black/30 px-3 py-3 text-xs text-emerald-100">
               {createKeyState.plaintextKey}
             </code>
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-emerald-200">
+              <li>Copy the key above.</li>
+              <li>Return to OpenClaw.</li>
+              <li>Paste it into the CMD Market API key field.</li>
+              <li>Save the connection.</li>
+            </ol>
           </div>
         ) : null}
 
-        {createKeyState.message ? (
+        {showCreateKeyMessage ? (
           <p className={createKeyState.status === "error" ? "text-sm text-red-300" : "text-sm text-emerald-200"}>
             {createKeyState.message}
           </p>
@@ -110,10 +124,10 @@ export function SellerSettingsControls({
             disabled={apiKeys.length > 0 || createKeyPending}
           >
             {apiKeys.length > 0
-              ? "OpenClaw Already Authorized"
+              ? "OpenClaw Connected"
               : createKeyPending
-                ? "Creating OpenClaw Key..."
-                : "Create OpenClaw Key"}
+                ? "Creating API Key..."
+                : "Create API Key for OpenClaw"}
           </button>
         </form>
       </section>

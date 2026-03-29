@@ -23,7 +23,7 @@ export async function createOpenClawApiKeyAction(
   if (!workspaceData?.activeOrganization) {
     return {
       apiKeys: [],
-      message: "An active seller workspace is required before authorizing OpenClaw.",
+      message: "Choose a seller workspace before connecting OpenClaw.",
       plaintextKey: null,
       status: "error"
     };
@@ -35,7 +35,7 @@ export async function createOpenClawApiKeyAction(
 
     return {
       apiKeys: result.keys.map(serializeApiKeySummary),
-      message: "OpenClaw authorization created. Copy the plaintext key now.",
+      message: "Key created. Return to OpenClaw and paste it there to finish connecting this workspace.",
       plaintextKey: result.createdKey.key,
       status: "success"
     };
