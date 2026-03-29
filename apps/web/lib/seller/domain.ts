@@ -1,3 +1,8 @@
+import type {
+  SellerEligibilitySource as PrismaSellerEligibilitySource,
+  SellerEligibilityStatus as PrismaSellerEligibilityStatus
+} from "@prisma/client";
+
 export async function ensureSellerAccountForOrganization({
   organizationId,
   repository,
@@ -312,9 +317,9 @@ export type SellerAccountRecord = {
 
 export type SellerStatus = "active" | "suspended" | "closed";
 
-export type SellerEligibilityStatus = "pending" | "eligible" | "revoked" | "suspended";
+export type SellerEligibilityStatus = PrismaSellerEligibilityStatus;
 
-export type SellerEligibilitySource = "manual_override" | "x_verification" | null;
+export type SellerEligibilitySource = PrismaSellerEligibilitySource | null;
 
 export type SellerContext = {
   sellerAccountId: string;

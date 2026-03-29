@@ -62,8 +62,7 @@ export function buildOpenClawApiKeyRequest({
     organizationId,
     name: OPENCLAW_API_KEY_NAME,
     prefix: OPENCLAW_API_KEY_PREFIX,
-    metadata: { integration: "openclaw" },
-    permissions: { seller: ["manage"] }
+    metadata: { integration: "openclaw" }
   };
 }
 
@@ -114,7 +113,6 @@ type OpenClawApiKeyRequest = {
   name: string;
   prefix: string;
   metadata: { integration: "openclaw" };
-  permissions: { seller: ["manage"] };
 };
 
 type SellerWorkspaceErrorCode = "openclaw_key_exists" | "workspace_creation_not_allowed";

@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient, sellerAccount as PrismaSellerAccountModel } from "@prisma/client";
 import { prisma } from "../db/client";
 import type {
   SellerAccountRecord,
@@ -115,34 +115,18 @@ export class PrismaSellerAccountRepository implements SellerAccountRepository {
 
 export const sellerAccountRepository = new PrismaSellerAccountRepository(prisma);
 
-function mapSellerAccountModel(record: SellerAccountModel): SellerAccountRecord {
+function mapSellerAccountModel(record: PrismaSellerAccountModel): SellerAccountRecord {
   return {
     createdAt: record.createdAt,
     defaultDisplayCurrencyCode: record.defaultDisplayCurrencyCode,
     id: record.id,
     listingEligibilityNote: record.listingEligibilityNote,
-    listingEligibilitySource: toSellerEligibilitySource(record.listingEligibilitySource),
-    listingEligibilityStatus: toSellerEligibilityStatus(record.listingEligibilityStatus),
+    listingEligibilitySource: record.listingEligibilitySource,
+    listingEligibilityStatus: record.listingEligibilityStatus,
     organizationId: record.organizationId,
     status: toSellerStatus(record.status),
     updatedAt: record.updatedAt
   };
-}
-
-function toSellerEligibilitySource(value: string | null): SellerEligibilitySource {
-  if (value === null || value === "manual_override" || value === "x_verification") {
-    return value;
-  }
-
-  throw new Error(`Unknown seller eligibility source: ${value}`);
-}
-
-function toSellerEligibilityStatus(value: string): SellerEligibilityStatus {
-  if (value === "pending" || value === "eligible" || value === "revoked" || value === "suspended") {
-    return value;
-  }
-
-  throw new Error(`Unknown seller eligibility status: ${value}`);
 }
 
 function toSellerStatus(value: string): SellerStatus {
@@ -173,16 +157,4 @@ type CreateAuditEventInput = {
   note: string | null;
   metadata: Record<string, unknown>;
   createdAt: Date;
-};
-
-type SellerAccountModel = {
-  createdAt: Date;
-  defaultDisplayCurrencyCode: string;
-  id: string;
-  listingEligibilityNote: string | null;
-  listingEligibilitySource: string | null;
-  listingEligibilityStatus: string;
-  organizationId: string;
-  status: string;
-  updatedAt: Date;
 };

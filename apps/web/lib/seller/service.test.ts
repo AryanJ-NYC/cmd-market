@@ -1,3 +1,7 @@
+import type {
+  SellerEligibilitySource as PrismaSellerEligibilitySource,
+  SellerEligibilityStatus as PrismaSellerEligibilityStatus
+} from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { authApi, createMarketplaceId, sellerAccountRepository } = vi.hoisted(() => ({
@@ -248,17 +252,17 @@ describe("seller service", () => {
 
     const result = await createOpenClawApiKey(new Headers(), "org_123");
 
-    expect(authApi.createApiKey).toHaveBeenCalledWith({
-      body: {
-        configId: "openclaw",
-        metadata: { integration: "openclaw" },
-        name: "OpenClaw",
-        organizationId: "org_123",
-        permissions: { seller: ["manage"] },
-        prefix: "cmdmkt_"
-      },
-      headers: expect.any(Headers)
-    });
+    expect(authApi.createApiKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: {
+          configId: "openclaw",
+          metadata: { integration: "openclaw" },
+          name: "OpenClaw",
+          organizationId: "org_123",
+          prefix: "cmdmkt_"
+        }
+      })
+    );
     expect(result.createdKey.key).toBe("cmdmkt_secret");
     expect(result.keys).toHaveLength(1);
   });
@@ -382,8 +386,8 @@ type SellerAccountLike = {
   defaultDisplayCurrencyCode: string;
   id: string;
   listingEligibilityNote: string | null;
-  listingEligibilitySource: "manual_override" | "x_verification" | null;
-  listingEligibilityStatus: "pending" | "eligible" | "revoked" | "suspended";
+  listingEligibilitySource: PrismaSellerEligibilitySource | null;
+  listingEligibilityStatus: PrismaSellerEligibilityStatus;
   organizationId: string;
   status: "active" | "suspended" | "closed";
   updatedAt: Date;

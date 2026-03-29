@@ -1,6 +1,12 @@
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
+-- CreateEnum
+CREATE TYPE "SellerEligibilityStatus" AS ENUM ('pending', 'eligible', 'revoked', 'suspended');
+
+-- CreateEnum
+CREATE TYPE "SellerEligibilitySource" AS ENUM ('manual_override', 'x_verification');
+
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
@@ -130,8 +136,8 @@ CREATE TABLE "seller_account" (
     "id" TEXT NOT NULL,
     "organization_id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
-    "listing_eligibility_status" TEXT NOT NULL,
-    "listing_eligibility_source" TEXT,
+    "listing_eligibility_status" "SellerEligibilityStatus" NOT NULL,
+    "listing_eligibility_source" "SellerEligibilitySource",
     "listing_eligibility_note" TEXT,
     "default_display_currency_code" TEXT NOT NULL DEFAULT 'USD',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

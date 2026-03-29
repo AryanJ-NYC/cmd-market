@@ -6,6 +6,18 @@ datasource db {
   provider = "postgresql"
 }
 
+enum SellerEligibilityStatus {
+  pending
+  eligible
+  revoked
+  suspended
+}
+
+enum SellerEligibilitySource {
+  manual_override
+  x_verification
+}
+
 model user {
   id              String       @id @default(cuid())
   name            String
@@ -157,8 +169,8 @@ model sellerAccount {
   id                         String       @id
   organizationId             String       @unique @map("organization_id")
   status                     String
-  listingEligibilityStatus   String       @map("listing_eligibility_status")
-  listingEligibilitySource   String?      @map("listing_eligibility_source")
+  listingEligibilityStatus   SellerEligibilityStatus @map("listing_eligibility_status")
+  listingEligibilitySource   SellerEligibilitySource? @map("listing_eligibility_source")
   listingEligibilityNote     String?      @map("listing_eligibility_note")
   defaultDisplayCurrencyCode String       @default("USD") @map("default_display_currency_code")
   createdAt                  DateTime     @default(now()) @map("created_at")

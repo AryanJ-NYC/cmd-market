@@ -84,8 +84,7 @@ describe("seller workspace", () => {
       organizationId: "org_123",
       name: OPENCLAW_API_KEY_NAME,
       prefix: OPENCLAW_API_KEY_PREFIX,
-      metadata: { integration: "openclaw" },
-      permissions: { seller: ["manage"] }
+      metadata: { integration: "openclaw" }
     });
   });
 
