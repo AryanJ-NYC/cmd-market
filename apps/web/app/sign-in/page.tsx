@@ -17,7 +17,7 @@ export default async function SignInPage() {
     redirect("/seller/workspace");
   }
 
-  const twitterEnabled = Boolean(env.twitterClientId && env.twitterClientSecret);
+  const twitterEnabled = Boolean(env.xConsumerKey && env.xConsumerSecret);
 
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-16 text-stone-100">
