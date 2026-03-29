@@ -23,12 +23,12 @@ const authOptions = {
     provider: "postgresql"
   }),
   secret: env.betterAuthSecret,
-  ...(env.xConsumerKey && env.xConsumerSecret
+  ...(env.xClientId && env.xClientSecret
     ? {
         socialProviders: {
           twitter: {
-            clientId: env.xConsumerKey,
-            clientSecret: env.xConsumerSecret
+            clientId: env.xClientId,
+            clientSecret: env.xClientSecret
           }
         }
       }

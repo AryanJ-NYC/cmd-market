@@ -5,8 +5,8 @@
     "DEV_SELLER_OVERRIDE_EMAILS",
     "NEON_DATABASE_URL",
     "NEON_DATABASE_URL_UNPOOLED",
-    "X_CONSUMER_KEY",
-    "X_CONSUMER_SECRET"
+    "X_CLIENT_ID",
+    "X_CLIENT_SECRET"
   ],
   "tasks": {
     "build": {
