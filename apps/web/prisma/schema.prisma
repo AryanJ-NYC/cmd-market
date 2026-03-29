@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SellerEligibilityStatus {
+  pending
+  eligible
+  revoked
+  suspended
+}
+
+enum SellerEligibilitySource {
+  manual_override
+  x_verification
+}
+
+model user {
+  id              String       @id @default(cuid())
+  name            String
+  email           String       @unique
+  emailVerified   Boolean      @default(false)
+  image           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  accounts        account[]
+  auditEvents     auditEvent[] @relation("auditEventActorUser")
+  invitationsSent invitation[] @relation("invitationInviter")
+  members         member[]
+  sessions        session[]
+
+  @@map("user")
+}
+
+model session {
+  id                   String        @id @default(cuid())
+  expiresAt            DateTime
+  token                String        @unique
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  activeOrganizationId String?
+  activeOrganization   organization? @relation("activeOrganizationSessions", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  user                 user          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model organization {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  logo           String?
+  createdAt      DateTime       @default(now())
+  metadata       String?
+  activeSessions session[]      @relation("activeOrganizationSessions")
+  apiKeys        apikey[]       @relation("organizationApiKeys")
+  invitations    invitation[]
+  members        member[]
+  sellerAccount  sellerAccount?
+
+  @@map("organization")
+}
+
+model member {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           user         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  inviter        user         @relation("invitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
+}
+
+model apikey {
+  id                  String       @id @default(cuid())
+  configId            String       @default("default")
+  name                String?
+  start               String?
+  referenceId         String
+  prefix              String?
+  key                 String       @unique
+  refillInterval      Int?
+  refillAmount        Int?
+  lastRefillAt        DateTime?
+  enabled             Boolean      @default(true)
+  rateLimitEnabled    Boolean      @default(true)
+  rateLimitTimeWindow Int          @default(86400000)
+  rateLimitMax        Int          @default(10)
+  requestCount        Int          @default(0)
+  remaining           Int?
+  lastRequest         DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  permissions         String?
+  metadata            String?
+  auditEvents         auditEvent[] @relation("auditEventActorApiKey")
+  organization        organization @relation("organizationApiKeys", fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@index([configId])
+  @@index([referenceId])
+  @@unique([configId, referenceId])
+  @@map("apikey")
+}
+
+model sellerAccount {
+  id                         String       @id
+  organizationId             String       @unique @map("organization_id")
+  status                     String
+  listingEligibilityStatus   SellerEligibilityStatus @map("listing_eligibility_status")
+  listingEligibilitySource   SellerEligibilitySource? @map("listing_eligibility_source")
+  listingEligibilityNote     String?      @map("listing_eligibility_note")
+  defaultDisplayCurrencyCode String       @default("USD") @map("default_display_currency_code")
+  createdAt                  DateTime     @default(now()) @map("created_at")
+  updatedAt                  DateTime     @updatedAt @map("updated_at")
+  auditEvents                auditEvent[]
+  organization               organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("seller_account")
+}
+
+model auditEvent {
+  id              String         @id
+  entityTable     String         @map("entity_table")
+  entityId        String         @map("entity_id")
+  action          String
+  actorType       String         @map("actor_type")
+  actorUserId     String?        @map("actor_user_id")
+  actorApiKeyId   String?        @map("actor_api_key_id")
+  sellerAccountId String?        @map("seller_account_id")
+  note            String?
+  metadata        Json
+  createdAt       DateTime       @default(now()) @map("created_at")
+  actorApiKey     apikey?        @relation("auditEventActorApiKey", fields: [actorApiKeyId], references: [id], onDelete: SetNull)
+  actorUser       user?          @relation("auditEventActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  sellerAccount   sellerAccount? @relation(fields: [sellerAccountId], references: [id], onDelete: SetNull)
+
+  @@index([sellerAccountId])
+  @@map("audit_event")
+}

@@ -1,5 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "BETTER_AUTH_SECRET",
+    "DEV_SELLER_OVERRIDE_EMAILS",
+    "NEON_DATABASE_URL",
+    "NEON_DATABASE_URL_UNPOOLED",
+    "X_CLIENT_ID",
+    "X_CLIENT_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -11,6 +19,10 @@
     },
     "lint": {
       "dependsOn": ["^lint"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^test"],
       "outputs": []
     },
     "typecheck": {

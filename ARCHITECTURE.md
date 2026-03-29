@@ -2,7 +2,7 @@
 
 ## Overview
 
-CMD Market is currently a frontend-first Turborepo scaffold for a future marketplace product. The repo is intentionally small: one Next.js app, shared workspace config packages, and a documentation system designed for both humans and coding agents.
+CMD Market is a Turborepo with one Next.js app that now carries the first marketplace backend slice inside the web runtime. The repo is still intentionally small, but it now includes seller workspace auth, a local PostgreSQL database, and Prisma-managed persistence alongside the frontend.
 
 ## Repo Shape
 
@@ -14,14 +14,40 @@ CMD Market is currently a frontend-first Turborepo scaffold for a future marketp
 ## Runtime Boundaries
 
 - The only runtime app today is the web frontend in `apps/web`.
-- There is no backend, worker, or database in this repo yet.
+- `apps/web` now owns the first server-side marketplace behavior through App Router routes, server actions, BetterAuth, Prisma, and PostgreSQL.
+- There is still no separate worker or standalone backend service in this repo.
 - Tailwind PostCSS config is kept local to `apps/web` because Next.js 16 Turbopack expects app-local PostCSS wiring.
+
+## Data And Auth
+
+- Local development uses Docker Compose to run PostgreSQL 16 on `127.0.0.1:5433`.
+- Prisma is the only checked-in database layer. Schema lives in `apps/web/prisma/schema.prisma`, config lives in `apps/web/prisma.config.ts`, and migrations live under `apps/web/prisma/migrations/`.
+- BetterAuth is mounted at `apps/web/app/api/auth/[...all]/route.ts` and uses:
+  - Twitter/X sign-in
+  - organization workspaces
+  - organization-owned API keys for OpenClaw
+- Seller-specific data currently lives in two custom tables:
+  - `seller_account`
+  - `audit_event`
+
+## Seller Flow
+
+- Browser sellers sign in at `/sign-in`.
+- Seller workspace creation and selection live under `/seller/workspace`, with workspace activation handled through a server action instead of a mutating `GET` route.
+- Seller settings and OpenClaw authorization live under `/seller/settings`.
+- Seller request resolution is shared between browser sessions and `x-api-key` requests.
+- Development eligibility override is only available outside production, even when `DEV_SELLER_OVERRIDE_EMAILS` is set.
+- The first seller APIs are:
+  - `GET /api/seller/context`
+  - `GET /api/seller/publishability`
 
 ## Key Flows
 
 - `pnpm dev` runs the Turborepo workspace and starts the web app.
+- `pnpm db:start` starts the repo-managed PostgreSQL container.
+- `pnpm db:migrate` applies Prisma migrations and regenerates the Prisma client for `apps/web`.
 - The web app imports its global stylesheet from the shared Tailwind package.
-- The homepage is intentionally minimal and exists only to prove the scaffold works end-to-end.
+- Seller workspace pages, seller APIs, and BetterAuth routes now run end-to-end against PostgreSQL.
 
 ## Constraints
 
