@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "vercel-build": "pnpm db:deploy && pnpm build"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.5.6",
