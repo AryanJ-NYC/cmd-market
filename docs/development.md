@@ -13,10 +13,11 @@
 ## Environment
 
 - Copy `apps/web/.env.example` to `apps/web/.env`.
-- Local PostgreSQL defaults to `postgres://postgres:postgres@127.0.0.1:5433/cmd_market`.
+- Local PostgreSQL defaults to `postgres://postgres:postgres@127.0.0.1:5433/cmd_market` for both `NEON_DATABASE_URL` and `NEON_DATABASE_URL_UNPOOLED`.
 - `apps/web/lib/env.ts` validates server env with `@t3-oss/env-nextjs`.
 - Better Auth resolves its base URL dynamically from the request host and only allows `localhost:*`, `*.vercel.app`, `cmd.market`, `www.cmd.market`, and `testnet.cmd.market`.
-- `BETTER_AUTH_SECRET`, `DATABASE_URL`, `X_CONSUMER_KEY`, and `X_CONSUMER_SECRET` are required in every environment where the app boots.
+- `BETTER_AUTH_SECRET`, `NEON_DATABASE_URL`, `X_CONSUMER_KEY`, and `X_CONSUMER_SECRET` are required in every environment where the app boots.
+- Prisma CLI uses `NEON_DATABASE_URL_UNPOOLED` for migrations and schema validation.
 
 ## Commands
 
