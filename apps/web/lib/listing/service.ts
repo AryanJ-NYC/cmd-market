@@ -144,7 +144,6 @@ export async function updateDraftListing(
 
   const attributeBuild = buildAttributeMutation({
     attributes: input.attributes,
-    currentCategory: existingListing.category,
     currentListingAttributes: existingListing.attributes,
     targetCategory: targetCategory.data,
   });
@@ -171,6 +170,27 @@ export async function updateDraftListing(
     updatedByApiKeyId: sellerContext.context.actorApiKeyId,
     updatedByUserId: sellerContext.context.actorUserId,
   });
+
+  if (!updated) {
+    const latestListing = await listingRepository.findListingById(listingId);
+
+    if (!latestListing) {
+      return notFound("Draft listing could not be found.");
+    }
+
+    if (latestListing.sellerAccountId !== sellerContext.context.sellerAccountId) {
+      return forbidden("Authenticated seller cannot modify that draft listing.");
+    }
+
+    if (latestListing.status !== "draft") {
+      return conflict("listing_not_draft", "Only draft listings can be updated.");
+    }
+
+    return conflict(
+      "listing_update_conflict",
+      "Draft listing could not be updated because it changed during the request.",
+    );
+  }
 
   return {
     data: serializeSellerListing(updated, sellerContext.context.eligibilityStatus),
@@ -660,7 +680,6 @@ function getPublishValidationIssues(
 
 function buildAttributeMutation({
   attributes,
-  currentCategory,
   currentListingAttributes,
   targetCategory,
 }: BuildAttributeMutationInput): BuildAttributeMutationResult {
@@ -731,10 +750,12 @@ function buildAttributeMutation({
     nextAttributes.set(attribute.key, stored.data);
   }
 
-  const removeCategoryAttributeIds =
-    currentCategory?.attributes
-      .filter((attribute) => !categoryAttributesByKey.has(attribute.key))
-      .map((attribute) => attribute.id) ?? [];
+  const targetCategoryAttributeIds = new Set(
+    targetCategory.attributes.map((attribute) => attribute.id),
+  );
+  const removeCategoryAttributeIds = currentListingAttributes
+    .filter((attribute) => !targetCategoryAttributeIds.has(attribute.categoryAttributeId))
+    .map((attribute) => attribute.categoryAttributeId);
 
   return {
     data: {
@@ -985,7 +1006,6 @@ type UpdateStoredAttributeInput = {
 
 type BuildAttributeMutationInput = {
   attributes: DraftListingAttributeMutation[] | undefined;
-  currentCategory: CategoryRecord | null;
   currentListingAttributes: ListingAttributeValueRecord[];
   targetCategory: CategoryRecord | null;
 };

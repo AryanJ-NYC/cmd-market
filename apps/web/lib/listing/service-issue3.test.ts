@@ -263,6 +263,134 @@ describe("listing service issue #3", () => {
     );
   });
 
+  it("returns a conflict when a draft update loses a race to publish", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById
+      .mockResolvedValueOnce(createListingRecord({ category: createCategoryRecord() }))
+      .mockResolvedValueOnce(
+        createListingRecord({
+          category: createCategoryRecord(),
+          publishedAt: new Date("2026-03-30T19:55:00.000Z"),
+          status: "published",
+        }),
+      );
+    listingRepository.updateDraftListing.mockResolvedValue(null);
+
+    const result = await updateDraftListing(
+      new Request("https://example.com/api/seller/listings/lst_123", { method: "PATCH" }),
+      "lst_123",
+      {
+        title: "Updated title",
+      },
+    );
+
+    expect(result).toEqual({
+      code: "listing_not_draft",
+      message: "Only draft listings can be updated.",
+      ok: false,
+      status: 409,
+    });
+  });
+
+  it("removes prior category attribute rows by previous ids when the category changes", async () => {
+    const currentCategory = createCategoryRecord();
+    const targetCategory = createCategoryRecord({
+      attributes: [
+        {
+          allowedValues: ["psa", "bgs", "cgc"],
+          id: "catattr_alt_grading_company",
+          isRequired: true,
+          key: "grading_company",
+          label: "Grading Company",
+          valueType: "enum",
+        },
+        {
+          allowedValues: null,
+          id: "catattr_alt_grade",
+          isRequired: true,
+          key: "grade",
+          label: "Grade",
+          valueType: "number",
+        },
+      ],
+      id: "cat_alt_cards",
+      name: "Alternate Trading Cards",
+      slug: "alternate-trading-cards",
+    });
+
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        attributes: [
+          createListingAttributeRecord({
+            categoryAttributeId: "catattr_cards_grading_company",
+            key: "grading_company",
+            label: "Grading Company",
+            value: "psa",
+            valueType: "enum",
+          }),
+          createListingAttributeRecord({
+            categoryAttributeId: "catattr_cards_grade",
+            key: "grade",
+            label: "Grade",
+            value: 8,
+            valueType: "number",
+          }),
+        ],
+        category: currentCategory,
+      }),
+    );
+    listingRepository.findCategoryById.mockResolvedValue(targetCategory);
+    listingRepository.updateDraftListing.mockResolvedValue(
+      createListingRecord({
+        attributes: [
+          createListingAttributeRecord({
+            categoryAttributeId: "catattr_alt_grading_company",
+            key: "grading_company",
+            label: "Grading Company",
+            value: "psa",
+            valueType: "enum",
+          }),
+          createListingAttributeRecord({
+            categoryAttributeId: "catattr_alt_grade",
+            key: "grade",
+            label: "Grade",
+            value: 8,
+            valueType: "number",
+          }),
+        ],
+        category: targetCategory,
+      }),
+    );
+
+    await updateDraftListing(
+      new Request("https://example.com/api/seller/listings/lst_123", { method: "PATCH" }),
+      "lst_123",
+      {
+        categoryId: "cat_alt_cards",
+      },
+    );
+
+    expect(listingRepository.updateDraftListing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attributes: [
+          expect.objectContaining({
+            categoryAttributeId: "catattr_alt_grading_company",
+            key: "grading_company",
+          }),
+          expect.objectContaining({
+            categoryAttributeId: "catattr_alt_grade",
+            key: "grade",
+          }),
+        ],
+        removeCategoryAttributeIds: [
+          "catattr_cards_grading_company",
+          "catattr_cards_grade",
+        ],
+      }),
+    );
+  });
+
   it("lists active category metadata for public consumers", async () => {
     listingRepository.listActiveCategories.mockResolvedValue([createCategoryRecord()]);
 
@@ -484,7 +612,22 @@ function createSellerContext(
   };
 }
 
-function createCategoryRecord() {
+function createCategoryRecord(
+  overrides: Partial<{
+    attributes: Array<{
+      allowedValues: string[] | null;
+      id: string;
+      isRequired: boolean;
+      key: string;
+      label: string;
+      valueType: "boolean" | "enum" | "json" | "number" | "text";
+    }>;
+    description: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  }> = {},
+) {
   return {
     attributes: [
       {
@@ -507,13 +650,15 @@ function createCategoryRecord() {
     description: "Graded and raw trading cards.",
     id: "cat_cards",
     name: "Trading Cards",
-    slug: "trading-cards"
+    slug: "trading-cards",
+    ...overrides,
   };
 }
 
 function createListingRecord(
   overrides: Partial<{
     attributes: Array<{
+      categoryAttributeId: string;
       key: string;
       label: string;
       value: boolean | number | string | Record<string, unknown>;
@@ -603,6 +748,7 @@ function createListingMediaRecord(
 
 function createListingAttributeRecord(
   overrides: Partial<{
+    categoryAttributeId: string;
     key: string;
     label: string;
     value: boolean | number | string | Record<string, unknown>;
@@ -610,6 +756,7 @@ function createListingAttributeRecord(
   }>
 ) {
   return {
+    categoryAttributeId: "catattr_cards_grading_company",
     key: "grading_company",
     label: "Grading Company",
     value: "psa",

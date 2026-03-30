@@ -145,9 +145,9 @@ export class PrismaListingRepository implements ListingRepository {
     }
   }
 
-  async updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord> {
+  async updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord | null> {
     const listing = await this.database.$transaction(async (transaction) => {
-      await transaction.listing.update({
+      const updateResult = await transaction.listing.updateMany({
         data: {
           categoryId: input.categoryId,
           conditionCode: input.conditionCode,
@@ -162,8 +162,14 @@ export class PrismaListingRepository implements ListingRepository {
         },
         where: {
           id: input.listingId,
+          sellerAccountId: input.sellerAccountId,
+          status: "draft",
         },
       });
+
+      if (updateResult.count === 0) {
+        return null;
+      }
 
       if (input.removeCategoryAttributeIds.length > 0) {
         await transaction.listingAttributeValue.deleteMany({
@@ -239,7 +245,7 @@ export class PrismaListingRepository implements ListingRepository {
       return updated;
     });
 
-    return mapListingModel(listing);
+    return listing ? mapListingModel(listing) : null;
   }
 
   async publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord> {
@@ -545,7 +551,7 @@ export type ListingRepository = {
   findListingById(listingId: string): Promise<ListingRecord | null>;
   listActiveCategories(): Promise<CategoryRecord[]>;
   publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord>;
-  updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord>;
+  updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord | null>;
 };
 
 export type ListingRecord = {
