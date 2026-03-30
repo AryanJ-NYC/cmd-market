@@ -244,6 +244,27 @@ export async function publishListing(
     updatedByUserId: sellerContext.context.actorUserId,
   });
 
+  if (!published) {
+    const latestListing = await listingRepository.findListingById(listingId);
+
+    if (!latestListing) {
+      return notFound("Draft listing could not be found.");
+    }
+
+    if (latestListing.sellerAccountId !== sellerContext.context.sellerAccountId) {
+      return forbidden("Authenticated seller cannot publish that draft listing.");
+    }
+
+    if (latestListing.status !== "draft") {
+      return conflict("listing_not_draft", "Only draft listings can be published.");
+    }
+
+    return conflict(
+      "listing_publish_conflict",
+      "Draft listing could not be published because it changed during the request.",
+    );
+  }
+
   return {
     data: serializeSellerListing(published, sellerContext.context.eligibilityStatus),
     ok: true,
@@ -461,7 +482,7 @@ export const attachListingMediaSchema = z.object({
     .min(1),
 });
 
-export const createDraftListingSchema = z.object({
+const draftListingFieldsSchema = z.object({
   category_id: z.string().trim().min(1).optional(),
   condition_code: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
@@ -475,7 +496,10 @@ export const createDraftListingSchema = z.object({
   title: z.string().trim().min(1).optional(),
 });
 
-export const updateDraftListingSchema = createDraftListingSchema.extend({
+export const createDraftListingSchema = draftListingFieldsSchema.strict();
+
+export const updateDraftListingSchema = draftListingFieldsSchema
+  .extend({
   attributes: z
     .array(
       z.object({
@@ -491,7 +515,8 @@ export const updateDraftListingSchema = createDraftListingSchema.extend({
       }),
     )
     .optional(),
-});
+  })
+  .strict();
 
 export function parseUploadSessionsInput(
   input: z.infer<typeof uploadSessionsSchema>,

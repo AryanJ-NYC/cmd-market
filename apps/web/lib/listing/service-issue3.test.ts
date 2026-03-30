@@ -40,6 +40,7 @@ vi.mock("../storage/spaces", () => ({
 
 import {
   createDraftListing,
+  createDraftListingSchema,
   getCategory,
   getPublicListing,
   listCategories,
@@ -149,6 +150,20 @@ describe("listing service issue #3", () => {
         unitPriceMinor: 125000
       })
     );
+  });
+
+  it("rejects unknown fields on draft creation input", () => {
+    const parsed = createDraftListingSchema.safeParse({
+      attributes: [
+        {
+          key: "grading_company",
+          value: "psa",
+        },
+      ],
+      title: "1999 Charizard Holo PSA 8",
+    });
+
+    expect(parsed.success).toBe(false);
   });
 
   it("updates a draft listing with core fields and typed trading-card attributes", async () => {
@@ -486,6 +501,80 @@ describe("listing service issue #3", () => {
         title: "Listing validation failed",
         type: "https://cmd.market/problems/listing-validation-failed"
       }
+    });
+  });
+
+  it("returns a conflict when publish loses a race to another publish", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById
+      .mockResolvedValueOnce(
+        createListingRecord({
+          attributes: [
+            createListingAttributeRecord({
+              categoryAttributeId: "catattr_cards_grading_company",
+              key: "grading_company",
+              label: "Grading Company",
+              value: "psa",
+              valueType: "enum",
+            }),
+            createListingAttributeRecord({
+              categoryAttributeId: "catattr_cards_grade",
+              key: "grade",
+              label: "Grade",
+              value: 8,
+              valueType: "number",
+            }),
+          ],
+          category: createCategoryRecord(),
+          conditionCode: "used_good",
+          description: "Clean slab, no cracks, centered well.",
+          media: [createListingMediaRecord()],
+          quantityAvailable: 1,
+          title: "1999 Charizard Holo PSA 8",
+          unitPriceMinor: 125000,
+        }),
+      )
+      .mockResolvedValueOnce(
+        createListingRecord({
+          attributes: [
+            createListingAttributeRecord({
+              categoryAttributeId: "catattr_cards_grading_company",
+              key: "grading_company",
+              label: "Grading Company",
+              value: "psa",
+              valueType: "enum",
+            }),
+            createListingAttributeRecord({
+              categoryAttributeId: "catattr_cards_grade",
+              key: "grade",
+              label: "Grade",
+              value: 8,
+              valueType: "number",
+            }),
+          ],
+          category: createCategoryRecord(),
+          conditionCode: "used_good",
+          description: "Clean slab, no cracks, centered well.",
+          media: [createListingMediaRecord()],
+          publishedAt: new Date("2026-03-30T20:15:00.000Z"),
+          quantityAvailable: 1,
+          status: "published",
+          title: "1999 Charizard Holo PSA 8",
+          unitPriceMinor: 125000,
+        }),
+      );
+    listingRepository.publishDraftListing.mockResolvedValue(null);
+
+    const result = await publishListing(
+      new Request("https://example.com/api/seller/listings/lst_123/publish", { method: "POST" }),
+      "lst_123",
+    );
+
+    expect(result).toEqual({
+      code: "listing_not_draft",
+      message: "Only draft listings can be published.",
+      ok: false,
+      status: 409,
     });
   });
 

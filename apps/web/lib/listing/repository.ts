@@ -248,9 +248,9 @@ export class PrismaListingRepository implements ListingRepository {
     return listing ? mapListingModel(listing) : null;
   }
 
-  async publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord> {
+  async publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord | null> {
     const listing = await this.database.$transaction(async (transaction) => {
-      await transaction.listing.update({
+      const updateResult = await transaction.listing.updateMany({
         data: {
           publishedAt: input.publishedAt,
           status: "published",
@@ -260,8 +260,14 @@ export class PrismaListingRepository implements ListingRepository {
         },
         where: {
           id: input.listingId,
+          sellerAccountId: input.sellerAccountId,
+          status: "draft",
         },
       });
+
+      if (updateResult.count === 0) {
+        return null;
+      }
 
       await transaction.auditEvent.create({
         data: {
@@ -296,7 +302,7 @@ export class PrismaListingRepository implements ListingRepository {
       return published;
     });
 
-    return mapListingModel(listing);
+    return listing ? mapListingModel(listing) : null;
   }
 
   async listActiveCategories(): Promise<CategoryRecord[]> {
@@ -550,7 +556,7 @@ export type ListingRepository = {
   findCategoryBySlug(categorySlug: string): Promise<CategoryRecord | null>;
   findListingById(listingId: string): Promise<ListingRecord | null>;
   listActiveCategories(): Promise<CategoryRecord[]>;
-  publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord>;
+  publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord | null>;
   updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord | null>;
 };
 
