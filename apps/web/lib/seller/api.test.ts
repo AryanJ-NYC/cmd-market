@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createSellerApiErrorResponse, parseSellerApiRequestBody } from "./api";
+import {
+  createSellerApiErrorResponse,
+  parseOptionalSellerApiRequestBody,
+  parseSellerApiRequestBody
+} from "./api";
 
 describe("seller api helpers", () => {
   it("formats seller api errors with retry metadata", async () => {
@@ -51,5 +55,46 @@ describe("seller api helpers", () => {
         retryAfterMs: null
       }
     });
+  });
+
+  it("accepts an empty optional request body but rejects explicit json null", async () => {
+    const schema = z.object({
+      title: z.string().optional()
+    });
+
+    const emptyBodyResult = await parseOptionalSellerApiRequestBody(
+      new Request("https://example.com/api/seller/listings", {
+        method: "POST"
+      }),
+      schema,
+      "Draft listing request body is invalid.",
+      {}
+    );
+
+    expect(emptyBodyResult).toEqual({
+      data: {},
+      ok: true
+    });
+
+    const nullBodyResult = await parseOptionalSellerApiRequestBody(
+      new Request("https://example.com/api/seller/listings", {
+        body: "null",
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      schema,
+      "Draft listing request body is invalid.",
+      {}
+    );
+
+    expect(nullBodyResult.ok).toBe(false);
+
+    if (nullBodyResult.ok) {
+      return;
+    }
+
+    expect(nullBodyResult.response.status).toBe(400);
   });
 });

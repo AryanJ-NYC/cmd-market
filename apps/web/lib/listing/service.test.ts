@@ -95,12 +95,44 @@ describe("listing service", () => {
     const result = await createDraftListing(new Request("https://example.com/api/seller/listings", { method: "POST" }));
 
     expect(result).toEqual({
-      data: {
+      data: expect.objectContaining({
+        attributes: [],
+        category: null,
+        conditionCode: null,
+        createdAt: "2026-03-29T20:00:00.000Z",
         id: "lst_123",
+        management: {
+          draftValidation: {
+            issues: expect.arrayContaining([
+              {
+                code: "seller_not_eligible",
+                field: "seller",
+                message: "Seller workspace is not eligible to publish listings."
+              },
+              {
+                code: "minimum_items_not_met",
+                field: "media",
+                message: "At least one image is required."
+              },
+              {
+                code: "required",
+                field: "category",
+                message: "Category is required."
+              }
+            ]),
+            publishable: false
+          }
+        },
         media: [],
         object: "listing",
+        price: null,
+        seller: {
+          displayName: "Scarce Cards",
+          id: "seller_123",
+          slug: "scarce-cards"
+        },
         status: "draft"
-      },
+      }),
       ok: true
     });
     expect(listingRepository.createDraftListing).toHaveBeenCalledWith(
@@ -135,12 +167,31 @@ describe("listing service", () => {
     const result = await createDraftListing(new Request("https://example.com/api/seller/listings", { method: "POST" }));
 
     expect(result).toEqual({
-      data: {
+      data: expect.objectContaining({
+        attributes: [],
+        category: null,
         id: "lst_456",
+        management: {
+          draftValidation: {
+            issues: expect.arrayContaining([
+              {
+                code: "seller_not_eligible",
+                field: "seller",
+                message: "Seller workspace is not eligible to publish listings."
+              }
+            ]),
+            publishable: false
+          }
+        },
         media: [],
         object: "listing",
+        seller: {
+          displayName: "Scarce Cards",
+          id: "seller_123",
+          slug: "scarce-cards"
+        },
         status: "draft"
-      },
+      }),
       ok: true
     });
     expect(listingRepository.createDraftListing).toHaveBeenCalledWith(
@@ -180,13 +231,11 @@ describe("listing service", () => {
         files: [
           {
             contentType: "image/jpeg",
-            filename: "front.jpg",
-            sizeBytes: 2488331
+            filename: "front.jpg"
           },
           {
             contentType: "image/png",
-            filename: "back.png",
-            sizeBytes: 31234
+            filename: "back.png"
           }
         ],
         listingId: "lst_123"
@@ -240,8 +289,7 @@ describe("listing service", () => {
         files: [
           {
             contentType: "application/pdf",
-            filename: "front.pdf",
-            sizeBytes: 2488331
+            filename: "front.pdf"
           }
         ],
         listingId: "lst_123"
@@ -270,8 +318,7 @@ describe("listing service", () => {
         files: [
           {
             contentType: "image/jpeg",
-            filename: "front.jpg",
-            sizeBytes: 2488331
+            filename: "front.jpg"
           }
         ],
         listingId: "lst_123"
@@ -349,8 +396,32 @@ describe("listing service", () => {
     );
 
     expect(result).toEqual({
-      data: {
+      data: expect.objectContaining({
+        attributes: [],
+        category: null,
         id: "lst_123",
+        management: {
+          draftValidation: {
+            issues: expect.arrayContaining([
+              {
+                code: "seller_not_eligible",
+                field: "seller",
+                message: "Seller workspace is not eligible to publish listings."
+              },
+              {
+                code: "required",
+                field: "category",
+                message: "Category is required."
+              },
+              {
+                code: "required",
+                field: "title",
+                message: "Title is required."
+              }
+            ]),
+            publishable: false
+          }
+        },
         media: [
           {
             altText: "Front photo",
@@ -361,8 +432,13 @@ describe("listing service", () => {
           }
         ],
         object: "listing",
+        seller: {
+          displayName: "Scarce Cards",
+          id: "seller_123",
+          slug: "scarce-cards"
+        },
         status: "draft"
-      },
+      }),
       ok: true
     });
     expect(listingRepository.attachMediaToDraftListing).toHaveBeenCalledWith(
@@ -462,6 +538,41 @@ describe("listing service", () => {
     });
   });
 
+  it("returns a conflict when media attachment loses a race to publish", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext());
+    listingRepository.findListingById
+      .mockResolvedValueOnce(createListingRecord())
+      .mockResolvedValueOnce(
+        createListingRecord({
+          publishedAt: new Date("2026-03-30T20:35:00.000Z"),
+          status: "published"
+        })
+      );
+    storage.assertUploadedAssetExists.mockResolvedValue(undefined);
+    listingRepository.attachMediaToDraftListing.mockResolvedValue(null);
+
+    const result = await attachDraftListingMedia(
+      new Request("https://example.com/api/seller/listings/lst_123/media", { method: "POST" }),
+      "lst_123",
+      {
+        media: [
+          {
+            altText: "Front photo",
+            assetKey: "listings/drafts/lst_123/asset_123-front.jpg",
+            sortOrder: 0
+          }
+        ]
+      }
+    );
+
+    expect(result).toEqual({
+      code: "listing_not_draft",
+      message: "Only draft listings can accept media attachments.",
+      ok: false,
+      status: 409
+    });
+  });
+
   it("rejects media attachment when the uploaded asset does not exist in storage", async () => {
     resolveSellerRequestContext.mockResolvedValue(createSellerContext());
     listingRepository.findListingById.mockResolvedValue(createListingRecord());
@@ -520,9 +631,33 @@ function createSellerContext(
 
 function createListingRecord(
   overrides: Partial<{
+    attributes: Array<{
+      categoryAttributeId?: string;
+      key: string;
+      label: string;
+      value: boolean | number | string | Record<string, unknown>;
+      valueType: "boolean" | "enum" | "json" | "number" | "text";
+    }>;
+    category: {
+      attributes: Array<{
+        allowedValues: string[] | null;
+        id: string;
+        isRequired: boolean;
+        key: string;
+        label: string;
+        valueType: "boolean" | "enum" | "json" | "number" | "text";
+      }>;
+      description: string | null;
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
+    conditionCode: string | null;
     createdAt: Date;
     createdByApiKeyId: string | null;
     createdByUserId: string | null;
+    description: string | null;
+    displayCurrencyCode: string;
     id: string;
     media: Array<{
       altText: string | null;
@@ -532,21 +667,44 @@ function createListingRecord(
       id: string;
       sortOrder: number;
     }>;
+    publishedAt: Date | null;
+    quantityAvailable: number | null;
+    seller: {
+      displayName: string;
+      id: string;
+      slug: string;
+    };
     sellerAccountId: string;
-    status: "draft";
+    status: "draft" | "published";
+    title: string | null;
+    unitPriceMinor: number | null;
     updatedAt: Date;
     updatedByApiKeyId: string | null;
     updatedByUserId: string | null;
   }> = {}
 ) {
   return {
+    attributes: [],
+    category: null,
+    conditionCode: null,
     createdAt: new Date("2026-03-29T20:00:00.000Z"),
     createdByApiKeyId: null,
     createdByUserId: "user_123",
+    description: null,
+    displayCurrencyCode: "USD",
     id: "lst_123",
     media: [],
+    publishedAt: null,
+    quantityAvailable: null,
+    seller: {
+      displayName: "Scarce Cards",
+      id: "seller_123",
+      slug: "scarce-cards"
+    },
     sellerAccountId: "seller_123",
     status: "draft" as const,
+    title: null,
+    unitPriceMinor: null,
     updatedAt: new Date("2026-03-29T20:00:00.000Z"),
     updatedByApiKeyId: null,
     updatedByUserId: "user_123",

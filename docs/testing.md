@@ -14,8 +14,10 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
 - `apps/web/lib/seller/domain.test.ts` covers seller-account domain rules, eligibility, and manual override policy.
 - `apps/web/lib/seller/workspace.test.ts` covers seller workspace routing and OpenClaw key request rules.
 - `apps/web/lib/seller/service.test.ts` covers seller request-context resolution and publishability behavior across session and API-key paths.
-- `apps/web/lib/listing/service.test.ts` covers thin draft creation, draft-scoped upload session creation, media attachment, cross-seller rejection, and duplicate-attachment handling.
-- `apps/web/prisma/schema.test.ts` covers the checked-in seller eligibility and listing/media Prisma schema shape.
+- `apps/web/lib/listing/service.test.ts` covers blank draft creation, draft-scoped upload session creation, media attachment, cross-seller rejection, and duplicate-attachment handling.
+- `apps/web/lib/listing/service.draft-publish.test.ts` covers real listing draft fields, typed trading-card attributes, category reads, publish validation, and public listing reads.
+- `apps/web/lib/listing/domain.test.ts` covers draft publish-validation rules and the Problem Details payload.
+- `apps/web/prisma/schema.test.ts` covers the checked-in seller eligibility, listing/media schema, and seeded category/attribute metadata shape.
 
 ## Manual Verification
 
@@ -32,10 +34,16 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
   - development override only appears outside production and only for allowlisted sellers
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
-  - `POST /api/seller/listings` returns a blank `draft` listing
+  - `POST /api/seller/listings` returns a `draft` listing and still accepts an empty `{}` body
+  - `GET /api/categories`
+  - `GET /api/categories/trading-cards`
   - `POST /api/seller/upload-sessions` accepts `listing_id` plus image descriptors and returns presigned Spaces `PUT` instructions
   - uploading to the presigned URL succeeds with the returned `content-type` header
   - `POST /api/seller/listings/:listingId/media` attaches uploaded assets and returns public media URLs
+  - `PATCH /api/seller/listings/:listingId` stores trading-card base fields plus `grading_company` and `grade`
+  - `POST /api/seller/listings/:listingId/publish` returns `422 listing_validation_failed` for incomplete drafts
+  - `POST /api/seller/listings/:listingId/publish` succeeds after required media and trading-card fields are present
+  - `GET /api/listings/:listingId` returns `404` before publish and a canonical public listing after publish
   - the draft/upload/attach flow works once with a browser session and once with `x-api-key`
 
 ## Direction

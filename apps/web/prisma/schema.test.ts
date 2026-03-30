@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -45,7 +45,7 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain("model listing {");
     expect(schema).toContain("sellerAccountId");
     expect(schema).toContain('@map("seller_account_id")');
-    expect(schema).toContain('@default("draft")');
+    expect(schema).toContain("@default(draft)");
     expect(schema).toContain("model listingMedia {");
     expect(schema).toContain("assetKey");
     expect(schema).toContain('@map("asset_key")');
@@ -53,7 +53,7 @@ describe("prisma seller eligibility schema", () => {
   });
 
   it("creates listing and listing_media tables in the initial migration", () => {
-    const migration = readPrismaFile("migrations/20260330183247_initial_marketplace/migration.sql");
+    const migration = readAllMigrationSql();
 
     expect(migration).toContain('CREATE TABLE "listing"');
     expect(migration).toContain('"seller_account_id" TEXT NOT NULL');
@@ -64,8 +64,72 @@ describe("prisma seller eligibility schema", () => {
     );
   });
 
+  it("defines marketplace category metadata and listing attribute models", () => {
+    const schema = readPrismaFile("schema.prisma");
+
+    expect(schema).toContain([
+      "enum ListingStatus {",
+      "  draft",
+      "  published",
+      "  reserved",
+      "  sold",
+      "  cancelled",
+      "  expired",
+      "}",
+    ].join("\n"));
+    expect(schema).toContain([
+      "enum AttributeValueType {",
+      "  text",
+      "  number",
+      "  boolean",
+      "  enum",
+      "  json",
+      "}",
+    ].join("\n"));
+    expect(schema).toContain("model category {");
+    expect(schema).toContain("model attributeDefinition {");
+    expect(schema).toContain("model categoryAttribute {");
+    expect(schema).toContain("model listingAttributeValue {");
+    expect(schema).toContain("categoryId");
+    expect(schema).toContain('@map("category_id")');
+    expect(schema).toContain("unitPriceMinor");
+    expect(schema).toContain('@map("unit_price_minor")');
+    expect(schema).toContain("publishedAt");
+    expect(schema).toContain('@map("published_at")');
+    expect(schema).toContain("@unique([categoryId, attributeDefinitionId])");
+    expect(schema).toContain("@unique([listingId, categoryAttributeId])");
+  });
+
+  it("creates category metadata tables, listing columns, and seeded trading-card metadata in migrations", () => {
+    const migration = readAllMigrationSql();
+
+    expect(migration).toContain('CREATE TYPE "ListingStatus" AS ENUM');
+    expect(migration).toContain('CREATE TYPE "AttributeValueType" AS ENUM');
+    expect(migration).toContain('CREATE TABLE "category"');
+    expect(migration).toContain('CREATE TABLE "attribute_definition"');
+    expect(migration).toContain('CREATE TABLE "category_attribute"');
+    expect(migration).toContain('CREATE TABLE "listing_attribute_value"');
+    expect(migration).toContain('"category_id" TEXT');
+    expect(migration).toContain('"unit_price_minor"');
+    expect(migration).toContain('"published_at" TIMESTAMP(3)');
+    expect(migration).toContain('INSERT INTO "category"');
+    expect(migration).toContain("'cat_cards'");
+    expect(migration).toContain("'trading-cards'");
+    expect(migration).toContain("'grading_company'");
+    expect(migration).toContain("'grade'");
+  });
+
 });
 
 function readPrismaFile(relativePath: string) {
   return readFileSync(join(prismaDirectory.pathname, relativePath), "utf8");
+}
+
+function readAllMigrationSql() {
+  const migrationsDirectory = join(prismaDirectory.pathname, "migrations");
+
+  return readdirSync(migrationsDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => readFileSync(join(migrationsDirectory, entry.name, "migration.sql"), "utf8"))
+    .join("\n");
 }

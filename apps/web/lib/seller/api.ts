@@ -64,10 +64,75 @@ export async function parseSellerApiRequestBody<T>(
   };
 }
 
-async function readRequestJson(request: Request) {
-  try {
+export async function parseOptionalSellerApiRequestBody<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+  invalidRequestMessage: string,
+  fallbackValue: unknown
+) {
+  const payload = await readOptionalRequestJson(request);
+
+  if (!payload.ok) {
     return {
-      data: await request.json(),
+      ok: false as const,
+      response: createSellerApiErrorResponse({
+        code: "invalid_request",
+        message: invalidRequestMessage,
+        status: 400
+      })
+    };
+  }
+
+  const parsed = schema.safeParse(payload.isEmpty ? fallbackValue : payload.data);
+
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      response: createSellerApiErrorResponse({
+        code: "invalid_request",
+        message: invalidRequestMessage,
+        status: 400
+      })
+    };
+  }
+
+  return {
+    data: parsed.data,
+    ok: true as const
+  };
+}
+
+async function readRequestJson(request: Request) {
+  const payload = await readRawRequestJson(request);
+
+  if (!payload.ok || payload.isEmpty || payload.data == null) {
+    return {
+      ok: false as const
+    };
+  }
+
+  return payload;
+}
+
+async function readOptionalRequestJson(request: Request) {
+  return readRawRequestJson(request);
+}
+
+async function readRawRequestJson(request: Request) {
+  try {
+    const text = await request.text();
+
+    if (text.trim().length === 0) {
+      return {
+        data: null,
+        isEmpty: true as const,
+        ok: true as const
+      };
+    }
+
+    return {
+      data: JSON.parse(text),
+      isEmpty: false as const,
       ok: true as const
     };
   } catch {

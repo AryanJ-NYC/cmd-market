@@ -3,7 +3,7 @@ import {
   createSellerApiErrorResponse,
   parseSellerApiRequestBody
 } from "../../../../../../lib/seller/api";
-import { serializeDraftListingResponse } from "../../../../../../lib/listing/http";
+import { serializeSellerListingResponse } from "../../../../../../lib/listing/http";
 import {
   attachDraftListingMedia,
   attachListingMediaSchema,
@@ -21,7 +21,7 @@ export async function POST(
   const parsedBody = await parseSellerApiRequestBody(
     request,
     attachListingMediaSchema,
-    "Listing media request body is invalid."
+    "Listing media attachment body is invalid."
   );
 
   if (!parsedBody.ok) {
@@ -29,11 +29,15 @@ export async function POST(
   }
 
   const { listingId } = await context.params;
-  const result = await attachDraftListingMedia(request, listingId, parseAttachListingMediaInput(parsedBody.data));
+  const result = await attachDraftListingMedia(
+    request,
+    listingId,
+    parseAttachListingMediaInput(parsedBody.data)
+  );
 
   if (!result.ok) {
     return createSellerApiErrorResponse(result);
   }
 
-  return NextResponse.json(serializeDraftListingResponse(result.data));
+  return NextResponse.json(serializeSellerListingResponse(result.data));
 }
