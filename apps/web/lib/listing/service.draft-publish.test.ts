@@ -44,6 +44,7 @@ import {
   getCategory,
   getPublicListing,
   publishListing,
+  updateDraftListingSchema,
   updateDraftListing
 } from "./service";
 
@@ -151,6 +152,25 @@ describe("listing service issue #3", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("rejects draft numeric fields that exceed the postgres integer range", () => {
+    const oversizedCreate = createDraftListingSchema.safeParse({
+      price: {
+        amount_minor: 2_147_483_648,
+        currency_code: "USD",
+      },
+      quantity_available: 2_147_483_648,
+    });
+    const oversizedPatch = updateDraftListingSchema.safeParse({
+      price: {
+        amount_minor: 2_147_483_648,
+        currency_code: "USD",
+      },
+    });
+
+    expect(oversizedCreate.success).toBe(false);
+    expect(oversizedPatch.success).toBe(false);
   });
 
   it("updates a draft listing with core fields and typed trading-card attributes", async () => {

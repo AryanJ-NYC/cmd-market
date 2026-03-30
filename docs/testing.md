@@ -15,7 +15,7 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
 - `apps/web/lib/seller/workspace.test.ts` covers seller workspace routing and OpenClaw key request rules.
 - `apps/web/lib/seller/service.test.ts` covers seller request-context resolution and publishability behavior across session and API-key paths.
 - `apps/web/lib/listing/service.test.ts` covers blank draft creation, draft-scoped upload session creation, media attachment, cross-seller rejection, and duplicate-attachment handling.
-- `apps/web/lib/listing/service-issue3.test.ts` covers real listing draft fields, typed trading-card attributes, category reads, publish validation, and public listing reads.
+- `apps/web/lib/listing/service.draft-publish.test.ts` covers real listing draft fields, typed trading-card attributes, category reads, publish validation, and public listing reads.
 - `apps/web/lib/listing/domain.test.ts` covers draft publish-validation rules and the Problem Details payload.
 - `apps/web/prisma/schema.test.ts` covers the checked-in seller eligibility, listing/media schema, and seeded category/attribute metadata shape.
 

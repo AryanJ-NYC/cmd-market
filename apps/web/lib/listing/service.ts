@@ -32,6 +32,8 @@ const IMAGE_CONTENT_TYPES = new Set([
   "image/webp",
 ]);
 
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
+
 export async function createDraftListing(
   request: Request,
   input: DraftListingMutationInput = {},
@@ -511,11 +513,11 @@ const draftListingFieldsSchema = z.object({
   description: z.string().trim().min(1).optional(),
   price: z
     .object({
-      amount_minor: z.number().int().nonnegative(),
+      amount_minor: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX),
       currency_code: z.string().trim().length(3),
     })
     .optional(),
-  quantity_available: z.number().int().nonnegative().optional(),
+  quantity_available: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX).optional(),
   title: z.string().trim().min(1).optional(),
 });
 
