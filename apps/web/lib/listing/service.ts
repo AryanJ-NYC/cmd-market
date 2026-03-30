@@ -160,6 +160,7 @@ export async function updateDraftListing(
     conditionCode: input.conditionCode ?? existingListing.conditionCode,
     description: input.description ?? existingListing.description,
     displayCurrencyCode: input.price?.currencyCode ?? existingListing.displayCurrencyCode,
+    expectedUpdatedAt: existingListing.updatedAt,
     listingId,
     quantityAvailable: input.quantityAvailable ?? existingListing.quantityAvailable,
     removeCategoryAttributeIds: attributeBuild.data.removeCategoryAttributeIds,

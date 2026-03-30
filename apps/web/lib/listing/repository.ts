@@ -167,6 +167,7 @@ export class PrismaListingRepository implements ListingRepository {
           updatedByUserId: input.updatedByUserId,
         },
         where: {
+          updatedAt: input.expectedUpdatedAt,
           id: input.listingId,
           sellerAccountId: input.sellerAccountId,
           status: "draft",
@@ -684,6 +685,7 @@ type UpdateDraftListingInput = {
   conditionCode: string | null;
   description: string | null;
   displayCurrencyCode: string;
+  expectedUpdatedAt: Date;
   listingId: string;
   quantityAvailable: number | null;
   removeCategoryAttributeIds: string[];

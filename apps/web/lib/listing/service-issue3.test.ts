@@ -273,7 +273,8 @@ describe("listing service issue #3", () => {
             valueNumber: 8,
             valueText: null
           })
-        ]
+        ],
+        expectedUpdatedAt: new Date("2026-03-29T20:00:00.000Z"),
       })
     );
   });
@@ -305,6 +306,45 @@ describe("listing service issue #3", () => {
       ok: false,
       status: 409,
     });
+  });
+
+  it("returns a conflict when a draft update loses a race to another draft update", async () => {
+    const initialListing = createListingRecord({
+      title: "Initial title",
+      updatedAt: new Date("2026-03-30T20:10:00.000Z"),
+    });
+
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById
+      .mockResolvedValueOnce(initialListing)
+      .mockResolvedValueOnce(
+        createListingRecord({
+          description: "Updated elsewhere",
+          title: "Already changed title",
+          updatedAt: new Date("2026-03-30T20:12:00.000Z"),
+        }),
+      );
+    listingRepository.updateDraftListing.mockResolvedValue(null);
+
+    const result = await updateDraftListing(
+      new Request("https://example.com/api/seller/listings/lst_123", { method: "PATCH" }),
+      "lst_123",
+      {
+        description: "My change",
+      },
+    );
+
+    expect(result).toEqual({
+      code: "listing_update_conflict",
+      message: "Draft listing could not be updated because it changed during the request.",
+      ok: false,
+      status: 409,
+    });
+    expect(listingRepository.updateDraftListing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedUpdatedAt: new Date("2026-03-30T20:10:00.000Z"),
+      }),
+    );
   });
 
   it("removes prior category attribute rows by previous ids when the category changes", async () => {
