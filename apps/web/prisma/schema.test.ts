@@ -26,8 +26,8 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain("listingEligibilitySource   SellerEligibilitySource?");
   });
 
-  it("creates seller eligibility enum types in the checked-in migration", () => {
-    const migration = readPrismaFile("migrations/20260326094109_issue1_seller_workspace/migration.sql");
+  it("creates seller eligibility enum types in the initial migration", () => {
+    const migration = readPrismaFile("migrations/20260330183247_initial_marketplace/migration.sql");
 
     expect(migration).toContain(
       'CREATE TYPE "SellerEligibilityStatus" AS ENUM (\'pending\', \'eligible\', \'revoked\', \'suspended\');'
@@ -52,8 +52,8 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain("@unique([listingId, assetKey])");
   });
 
-  it("creates listing and listing_media tables in the checked-in migration", () => {
-    const migration = readPrismaFile("migrations/20260329223047_issue2_draft_listing_media/migration.sql");
+  it("creates listing and listing_media tables in the initial migration", () => {
+    const migration = readPrismaFile("migrations/20260330183247_initial_marketplace/migration.sql");
 
     expect(migration).toContain('CREATE TABLE "listing"');
     expect(migration).toContain('"seller_account_id" TEXT NOT NULL');
@@ -63,6 +63,7 @@ describe("prisma seller eligibility schema", () => {
       'CREATE UNIQUE INDEX "listing_media_listing_id_asset_key_key" ON "listing_media"("listing_id", "asset_key");'
     );
   });
+
 });
 
 function readPrismaFile(relativePath: string) {

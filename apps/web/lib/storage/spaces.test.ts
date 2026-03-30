@@ -14,7 +14,7 @@ describe("spaces storage helpers", () => {
 
   it("derives a public asset url from the configured base host", () => {
     expect(getPublicAssetUrl("listings/drafts/lst_123/asset_123-front.jpg")).toBe(
-      "https://cmd-market-assets.nyc3.cdn.digitaloceanspaces.com/listings/drafts/lst_123/asset_123-front.jpg"
+      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/drafts/lst_123/asset_123-front.jpg"
     );
   });
 });
