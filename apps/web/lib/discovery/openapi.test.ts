@@ -24,8 +24,32 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/upload-sessions"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/media"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/publish"]?.post?.responses?.["422"]).toBeDefined();
+    expect(getRequestBodyRequired(paths["/api/seller/upload-sessions"]?.post?.requestBody)).toBe(true);
+    expect(getRequestBodyRequired(paths["/api/seller/listings/{listingId}/media"]?.post?.requestBody)).toBe(
+      true
+    );
+    expect(getRequestBodyRequired(paths["/api/seller/listings"]?.post?.requestBody)).toBe(false);
+    expect(getRequestBodyRequired(paths["/api/seller/listings/{listingId}"]?.patch?.requestBody)).toBe(
+      false
+    );
+    expect(
+      paths["/api/seller/publishability"]?.get?.responses?.["403"]?.content?.["application/json"]?.schema
+    ).toEqual({
+      $ref: "#/components/schemas/SellerPublishabilityForbiddenResponse"
+    });
+    expect(
+      document.components?.schemas?.SellerPublishabilityForbiddenResponse
+    ).toMatchObject({
+      anyOf: expect.any(Array)
+    });
     expect(paths["/api/seller/context"]?.get?.description).toContain(
       "API keys do not authenticate browser `/seller/*` routes."
     );
   });
 });
+
+function getRequestBodyRequired(
+  requestBody: { required?: boolean } | { $ref: string } | undefined
+) {
+  return requestBody && "required" in requestBody ? requestBody.required : undefined;
+}

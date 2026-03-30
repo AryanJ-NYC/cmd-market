@@ -26,6 +26,14 @@ import {
   sellerPublishabilityResponseSchema
 } from "../seller/http";
 
+const sellerPublishabilityForbiddenResponseSchema = z
+  .union([sellerApiErrorBodySchema, sellerPublishabilityResponseSchema])
+  .meta({
+    description:
+      "Forbidden response for seller publishability checks. This may be a standard seller API error envelope or an ineligible-but-resolved publishability payload.",
+    id: "SellerPublishabilityForbiddenResponse"
+  });
+
 const categorySlugPathParamsSchema = z.object({
   categorySlug: z.string().meta({
     description: "Category slug.",
@@ -199,7 +207,8 @@ export function buildOpenApiDocument() {
             "Attaches uploaded media to a seller-owned draft listing. API keys do not authenticate browser `/seller/*` routes.",
           requestBody: jsonRequestBody(
             attachListingMediaSchema,
-            "Media attachment payload for a seller-owned draft listing."
+            "Media attachment payload for a seller-owned draft listing.",
+            true
           ),
           requestParams: {
             path: listingIdPathParamsSchema
@@ -256,10 +265,11 @@ export function buildOpenApiDocument() {
               "403": {
                 content: {
                   "application/json": {
-                    schema: sellerPublishabilityResponseSchema
+                    schema: sellerPublishabilityForbiddenResponseSchema
                   }
                 },
-                description: "Seller workspace resolved successfully, but it is not publishable yet."
+                description:
+                  "Seller workspace is either unresolved/forbidden or resolved successfully but not publishable yet."
               }
             },
             success: {
@@ -277,7 +287,8 @@ export function buildOpenApiDocument() {
             "Creates draft-scoped direct-upload sessions for listing media. API keys do not authenticate browser `/seller/*` routes.",
           requestBody: jsonRequestBody(
             uploadSessionsSchema,
-            "Draft-scoped upload session request payload."
+            "Draft-scoped upload session request payload.",
+            true
           ),
           responses: sellerResponses({
             additional: {
@@ -296,14 +307,15 @@ export function buildOpenApiDocument() {
   });
 }
 
-function jsonRequestBody(schema: z.ZodType, description: string) {
+function jsonRequestBody(schema: z.ZodType, description: string, required = false) {
   return {
     content: {
       "application/json": {
         schema
       }
     },
-    description
+    description,
+    required
   };
 }
 

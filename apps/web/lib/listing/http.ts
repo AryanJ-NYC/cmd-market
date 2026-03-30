@@ -71,7 +71,7 @@ const draftValidationIssueSchema = z
     id: "DraftValidationIssue",
   });
 
-export const sellerListingMediaItemSchema = z
+const sellerListingMediaItemSchema = z
   .object({
     alt_text: z.string().nullable(),
     asset_key: z.string(),
@@ -126,8 +126,6 @@ export const sellerListingResponseSchema = z
     description: "Seller listing response envelope.",
     id: "SellerListingResponse",
   });
-
-export const draftListingResponseSchema = sellerListingResponseSchema;
 
 export const publicListingResponseSchema = z
   .object({
@@ -293,10 +291,6 @@ export function serializeSellerListingResponse(listing: SellerListingResource) {
       updated_at: listing.updatedAt,
     },
   });
-}
-
-export function serializeDraftListingResponse(listing: SellerListingResource) {
-  return serializeSellerListingResponse(listing);
 }
 
 export function serializePublicListingResponse(listing: PublicListingResource) {
