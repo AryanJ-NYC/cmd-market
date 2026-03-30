@@ -578,6 +578,63 @@ describe("listing service issue #3", () => {
     });
   });
 
+  it("returns a conflict when publish loses a race to a draft mutation", async () => {
+    const initialListing = createListingRecord({
+      attributes: [
+        createListingAttributeRecord({
+          categoryAttributeId: "catattr_cards_grading_company",
+          key: "grading_company",
+          label: "Grading Company",
+          value: "psa",
+          valueType: "enum",
+        }),
+        createListingAttributeRecord({
+          categoryAttributeId: "catattr_cards_grade",
+          key: "grade",
+          label: "Grade",
+          value: 8,
+          valueType: "number",
+        }),
+      ],
+      category: createCategoryRecord(),
+      conditionCode: "used_good",
+      description: "Clean slab, no cracks, centered well.",
+      media: [createListingMediaRecord()],
+      quantityAvailable: 1,
+      title: "1999 Charizard Holo PSA 8",
+      unitPriceMinor: 125000,
+      updatedAt: new Date("2026-03-30T20:10:00.000Z"),
+    });
+    const mutatedDraft = createListingRecord({
+      ...initialListing,
+      quantityAvailable: 0,
+      updatedAt: new Date("2026-03-30T20:12:00.000Z"),
+    });
+
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById
+      .mockResolvedValueOnce(initialListing)
+      .mockResolvedValueOnce(mutatedDraft);
+    listingRepository.publishDraftListing.mockResolvedValue(null);
+
+    const result = await publishListing(
+      new Request("https://example.com/api/seller/listings/lst_123/publish", { method: "POST" }),
+      "lst_123",
+    );
+
+    expect(result).toEqual({
+      code: "listing_publish_conflict",
+      message: "Draft listing could not be published because it changed during the request.",
+      ok: false,
+      status: 409,
+    });
+    expect(listingRepository.publishDraftListing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedUpdatedAt: new Date("2026-03-30T20:10:00.000Z"),
+      }),
+    );
+  });
+
   it("returns a canonical public listing only when the listing is published", async () => {
     storage.getPublicAssetUrl.mockReturnValue("https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg");
     listingRepository.findListingById

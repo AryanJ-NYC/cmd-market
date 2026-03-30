@@ -236,6 +236,7 @@ export async function publishListing(
   const now = new Date();
   const published = await listingRepository.publishDraftListing({
     auditEventId: createMarketplaceId(),
+    expectedUpdatedAt: listing.updatedAt,
     listingId,
     publishedAt: now,
     sellerAccountId: sellerContext.context.sellerAccountId,
@@ -433,6 +434,27 @@ export async function attachDraftListingMedia(
       updatedByApiKeyId: sellerContext.context.actorApiKeyId,
       updatedByUserId: sellerContext.context.actorUserId,
     });
+
+    if (!listing) {
+      const latestListing = await listingRepository.findListingById(listingId);
+
+      if (!latestListing) {
+        return notFound("Draft listing could not be found.");
+      }
+
+      if (latestListing.sellerAccountId !== sellerContext.context.sellerAccountId) {
+        return forbidden("Authenticated seller cannot modify that draft listing.");
+      }
+
+      if (latestListing.status !== "draft") {
+        return conflict("listing_not_draft", "Only draft listings can accept media attachments.");
+      }
+
+      return conflict(
+        "listing_media_attach_conflict",
+        "Draft listing media could not be attached because it changed during the request.",
+      );
+    }
 
     return {
       data: serializeSellerListing(listing, sellerContext.context.eligibilityStatus),

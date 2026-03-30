@@ -77,9 +77,26 @@ export class PrismaListingRepository implements ListingRepository {
     return listing ? mapListingModel(listing) : null;
   }
 
-  async attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord> {
+  async attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord | null> {
     try {
       const listing = await this.database.$transaction(async (transaction) => {
+        const updateResult = await transaction.listing.updateMany({
+          data: {
+            updatedAt: input.updatedAt,
+            updatedByApiKeyId: input.updatedByApiKeyId,
+            updatedByUserId: input.updatedByUserId,
+          },
+          where: {
+            id: input.listingId,
+            sellerAccountId: input.sellerAccountId,
+            status: "draft",
+          },
+        });
+
+        if (updateResult.count === 0) {
+          return null;
+        }
+
         await transaction.listingMedia.createMany({
           data: input.media.map((item) => ({
             altText: item.altText,
@@ -90,17 +107,6 @@ export class PrismaListingRepository implements ListingRepository {
             listingId: input.listingId,
             sortOrder: item.sortOrder,
           })),
-        });
-
-        await transaction.listing.update({
-          data: {
-            updatedAt: input.updatedAt,
-            updatedByApiKeyId: input.updatedByApiKeyId,
-            updatedByUserId: input.updatedByUserId,
-          },
-          where: {
-            id: input.listingId,
-          },
         });
 
         await transaction.auditEvent.create({
@@ -135,7 +141,7 @@ export class PrismaListingRepository implements ListingRepository {
         return updated;
       });
 
-      return mapListingModel(listing);
+      return listing ? mapListingModel(listing) : null;
     } catch (error) {
       if (isDuplicateListingMediaAssetKeyError(error)) {
         throw new DuplicateListingMediaAssetKeyError();
@@ -259,6 +265,7 @@ export class PrismaListingRepository implements ListingRepository {
           updatedByUserId: input.updatedByUserId,
         },
         where: {
+          updatedAt: input.expectedUpdatedAt,
           id: input.listingId,
           sellerAccountId: input.sellerAccountId,
           status: "draft",
@@ -550,7 +557,7 @@ type ListingModel = Prisma.listingGetPayload<{
 }>;
 
 export type ListingRepository = {
-  attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord>;
+  attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord | null>;
   createDraftListing(input: CreateDraftListingInput): Promise<ListingRecord>;
   findCategoryById(categoryId: string): Promise<CategoryRecord | null>;
   findCategoryBySlug(categorySlug: string): Promise<CategoryRecord | null>;
@@ -690,6 +697,7 @@ type UpdateDraftListingInput = {
 
 type PublishDraftListingInput = {
   auditEventId: string;
+  expectedUpdatedAt: Date;
   listingId: string;
   publishedAt: Date;
   sellerAccountId: string;

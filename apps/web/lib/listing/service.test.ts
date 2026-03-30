@@ -538,6 +538,41 @@ describe("listing service", () => {
     });
   });
 
+  it("returns a conflict when media attachment loses a race to publish", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext());
+    listingRepository.findListingById
+      .mockResolvedValueOnce(createListingRecord())
+      .mockResolvedValueOnce(
+        createListingRecord({
+          publishedAt: new Date("2026-03-30T20:35:00.000Z"),
+          status: "published"
+        })
+      );
+    storage.assertUploadedAssetExists.mockResolvedValue(undefined);
+    listingRepository.attachMediaToDraftListing.mockResolvedValue(null);
+
+    const result = await attachDraftListingMedia(
+      new Request("https://example.com/api/seller/listings/lst_123/media", { method: "POST" }),
+      "lst_123",
+      {
+        media: [
+          {
+            altText: "Front photo",
+            assetKey: "listings/drafts/lst_123/asset_123-front.jpg",
+            sortOrder: 0
+          }
+        ]
+      }
+    );
+
+    expect(result).toEqual({
+      code: "listing_not_draft",
+      message: "Only draft listings can accept media attachments.",
+      ok: false,
+      status: 409
+    });
+  });
+
   it("rejects media attachment when the uploaded asset does not exist in storage", async () => {
     resolveSellerRequestContext.mockResolvedValue(createSellerContext());
     listingRepository.findListingById.mockResolvedValue(createListingRecord());
@@ -640,7 +675,7 @@ function createListingRecord(
       slug: string;
     };
     sellerAccountId: string;
-    status: "draft";
+    status: "draft" | "published";
     title: string | null;
     unitPriceMinor: number | null;
     updatedAt: Date;
