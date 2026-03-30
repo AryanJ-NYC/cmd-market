@@ -5,9 +5,9 @@ import {
 } from "../../../../../lib/seller/api";
 import { serializeSellerListingResponse } from "../../../../../lib/listing/http";
 import {
-  draftListingMutationSchema,
   getSellerListing,
   parseDraftListingMutationInput,
+  updateDraftListingSchema,
   updateDraftListing
 } from "../../../../../lib/listing/service";
 
@@ -39,7 +39,7 @@ export async function PATCH(
 ) {
   const parsedBody = await parseOptionalSellerApiRequestBody(
     request,
-    draftListingMutationSchema,
+    updateDraftListingSchema,
     "Draft listing update body is invalid.",
     {}
   );

@@ -1,9 +1,3 @@
-/*
-  Warnings:
-
-  - The `status` column on the `listing` table would be dropped and recreated. This will lead to data loss if there is data in the column.
-
-*/
 -- CreateEnum
 CREATE TYPE "ListingStatus" AS ENUM ('draft', 'published', 'reserved', 'sold', 'cancelled', 'expired');
 
@@ -19,9 +13,12 @@ ADD COLUMN     "display_currency_code" TEXT NOT NULL DEFAULT 'USD',
 ADD COLUMN     "published_at" TIMESTAMP(3),
 ADD COLUMN     "quantity_available" INTEGER,
 ADD COLUMN     "title" TEXT,
-ADD COLUMN     "unit_price_minor" INTEGER,
-DROP COLUMN "status",
-ADD COLUMN     "status" "ListingStatus" NOT NULL DEFAULT 'draft';
+ADD COLUMN     "unit_price_minor" INTEGER;
+
+-- Preserve existing listing status values when moving from text to enum
+ALTER TABLE "listing" ALTER COLUMN "status" DROP DEFAULT;
+ALTER TABLE "listing" ALTER COLUMN "status" TYPE "ListingStatus" USING ("status"::text::"ListingStatus");
+ALTER TABLE "listing" ALTER COLUMN "status" SET DEFAULT 'draft';
 
 -- CreateTable
 CREATE TABLE "category" (

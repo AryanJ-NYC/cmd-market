@@ -24,6 +24,18 @@ describe("listing domain", () => {
           }
         ],
         category: {
+          attributes: [
+            {
+              isRequired: true,
+              key: "grading_company",
+              label: "Grading Company"
+            },
+            {
+              isRequired: true,
+              key: "grade",
+              label: "Grade"
+            }
+          ],
           id: "cat_cards",
           name: "Trading Cards",
           slug: "trading-cards"
@@ -108,6 +120,18 @@ describe("listing domain", () => {
       eligibilityStatus: "eligible",
       listing: createDraftListingRecord({
         category: {
+          attributes: [
+            {
+              isRequired: true,
+              key: "grading_company",
+              label: "Grading Company"
+            },
+            {
+              isRequired: true,
+              key: "grade",
+              label: "Grade"
+            }
+          ],
           id: "cat_cards",
           name: "Trading Cards",
           slug: "trading-cards"
@@ -186,6 +210,11 @@ function createDraftListingRecord(
       valueType: "boolean" | "enum" | "json" | "number" | "text";
     }>;
     category: {
+      attributes: Array<{
+        isRequired: boolean;
+        key: string;
+        label: string;
+      }>;
       id: string;
       name: string;
       slug: string;

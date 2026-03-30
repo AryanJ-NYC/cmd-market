@@ -5,15 +5,15 @@ import {
 } from "../../../../lib/seller/api";
 import { serializeSellerListingResponse } from "../../../../lib/listing/http";
 import {
+  createDraftListingSchema,
   createDraftListing,
-  draftListingMutationSchema,
   parseDraftListingMutationInput
 } from "../../../../lib/listing/service";
 
 export async function POST(request: Request) {
   const parsedBody = await parseOptionalSellerApiRequestBody(
     request,
-    draftListingMutationSchema,
+    createDraftListingSchema,
     "Draft listing request body is invalid.",
     {}
   );

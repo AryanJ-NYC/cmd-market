@@ -80,22 +80,18 @@ export function getDraftListingValidation({
     });
   }
 
-  if (requiresTradingCardAttributes(listing.category)) {
+  if (listing.category) {
     const attributeKeys = new Set(listing.attributes.map((attribute) => attribute.key));
 
-    if (!attributeKeys.has("grading_company")) {
-      issues.push({
-        code: "required",
-        field: "attributes.grading_company",
-        message: "Grading Company is required for this category."
-      });
-    }
+    for (const attribute of listing.category.attributes) {
+      if (!attribute.isRequired || attributeKeys.has(attribute.key)) {
+        continue;
+      }
 
-    if (!attributeKeys.has("grade")) {
       issues.push({
         code: "required",
-        field: "attributes.grade",
-        message: "Grade is required for this category."
+        field: `attributes.${attribute.key}`,
+        message: `${attribute.label} is required for this category.`
       });
     }
   }
@@ -121,10 +117,6 @@ export function createListingValidationProblem({
   };
 }
 
-function requiresTradingCardAttributes(category: DraftListingValidationInput["category"]) {
-  return category?.id === "cat_cards" || category?.slug === "trading-cards";
-}
-
 function hasValue(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -142,6 +134,11 @@ type DraftListingValidationInput = {
     valueType: "boolean" | "enum" | "json" | "number" | "text";
   }>;
   category: {
+    attributes: Array<{
+      isRequired: boolean;
+      key: string;
+      label: string;
+    }>;
     id: string;
     name: string;
     slug: string;

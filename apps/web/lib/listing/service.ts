@@ -441,21 +441,7 @@ export const attachListingMediaSchema = z.object({
     .min(1),
 });
 
-export const draftListingMutationSchema = z.object({
-  attributes: z
-    .array(
-      z.object({
-        key: z.string().trim().min(1),
-        value: z.union([
-          z.string(),
-          z.number().finite(),
-          z.boolean(),
-          z.array(z.unknown()),
-          z.record(z.string(), z.unknown()),
-        ]),
-      }),
-    )
-    .optional(),
+export const createDraftListingSchema = z.object({
   category_id: z.string().trim().min(1).optional(),
   condition_code: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
@@ -467,6 +453,24 @@ export const draftListingMutationSchema = z.object({
     .optional(),
   quantity_available: z.number().int().nonnegative().optional(),
   title: z.string().trim().min(1).optional(),
+});
+
+export const updateDraftListingSchema = createDraftListingSchema.extend({
+  attributes: z
+    .array(
+      z.object({
+        key: z.string().trim().min(1),
+        value: z.union([
+          z.string(),
+          z.number().finite(),
+          z.boolean(),
+          z.array(z.unknown()),
+          z.record(z.string(), z.unknown()),
+          z.null(),
+        ]),
+      }),
+    )
+    .optional(),
 });
 
 export function parseUploadSessionsInput(
@@ -494,13 +498,16 @@ export function parseAttachListingMediaInput(
 }
 
 export function parseDraftListingMutationInput(
-  input: z.infer<typeof draftListingMutationSchema>,
+  input: z.infer<typeof createDraftListingSchema> | z.infer<typeof updateDraftListingSchema>,
 ): DraftListingMutationInput {
   return {
-    attributes: input.attributes?.map((attribute) => ({
-      key: attribute.key,
-      value: attribute.value,
-    })),
+    attributes:
+      "attributes" in input
+        ? input.attributes?.map((attribute) => ({
+            key: attribute.key,
+            value: attribute.value,
+          }))
+        : undefined,
     categoryId: input.category_id,
     conditionCode: input.condition_code,
     description: input.description,
@@ -681,6 +688,7 @@ function buildAttributeMutation({
     string,
     UpdateStoredAttributeInput
   >();
+  const explicitRemoveCategoryAttributeIds: string[] = [];
 
   for (const existing of currentListingAttributes) {
     const categoryAttribute = categoryAttributesByKey.get(existing.key);
@@ -708,6 +716,12 @@ function buildAttributeMutation({
       );
     }
 
+    if (attribute.value === null) {
+      nextAttributes.delete(attribute.key);
+      explicitRemoveCategoryAttributeIds.push(categoryAttribute.id);
+      continue;
+    }
+
     const stored = buildStoredAttributeFromValue(categoryAttribute, attribute.value);
 
     if (!stored.ok) {
@@ -725,7 +739,10 @@ function buildAttributeMutation({
   return {
     data: {
       attributes: [...nextAttributes.values()],
-      removeCategoryAttributeIds,
+      removeCategoryAttributeIds: dedupeStrings([
+        ...removeCategoryAttributeIds,
+        ...explicitRemoveCategoryAttributeIds,
+      ]),
     },
     ok: true,
   };
@@ -876,6 +893,10 @@ function normalizeTextValue(value: string) {
   return value.trim().toLowerCase();
 }
 
+function dedupeStrings(values: string[]) {
+  return [...new Set(values)];
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -947,7 +968,7 @@ type DraftListingMutationInput = {
 
 type DraftListingAttributeMutation = {
   key: string;
-  value: boolean | number | string | Record<string, unknown> | unknown[];
+  value: boolean | number | string | Record<string, unknown> | unknown[] | null;
 };
 
 type UpdateStoredAttributeInput = {
