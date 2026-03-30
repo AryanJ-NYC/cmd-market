@@ -56,8 +56,15 @@
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
   - `POST /api/seller/listings`
+  - `GET /api/seller/listings/:listingId`
+  - `PATCH /api/seller/listings/:listingId`
   - `POST /api/seller/upload-sessions`
   - `POST /api/seller/listings/:listingId/media`
+  - `POST /api/seller/listings/:listingId/publish`
+- Public listing APIs live at:
+  - `GET /api/categories`
+  - `GET /api/categories/:categorySlug`
+  - `GET /api/listings/:listingId`
 - Seller UI entry points live at:
   - `/seller`
   - `/sign-in`
@@ -71,6 +78,10 @@
 - Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
 - Seller API keys authenticate seller API routes only. Browser seller UI still requires a browser session.
 - Draft upload sessions are listing-scoped and currently expect a `listing_id` plus image file descriptors.
+- Trading-card authoring currently uses one seeded category:
+  - `cat_cards`
+  - slug `trading-cards`
+  - required attributes `grading_company` and `grade`
 
 ## Database Workflow
 
@@ -83,7 +94,7 @@
 - Vercel runs `pnpm vercel-build`, which applies `prisma migrate deploy` before `pnpm build`.
 - If an older local PostgreSQL volume reports Prisma drift from pre-reset seller-account migrations, reset that local dev database once with `pnpm db:stop`, then `pnpm db:start`, then rerun `pnpm db:migrate`.
 
-## Draft Media API Flow
+## Listing Authoring API Flow
 
 1. Create a blank draft listing:
    ```bash
@@ -91,6 +102,23 @@
      -H "x-api-key: <seller-api-key>" \
      -H "content-type: application/json" \
      -d '{}'
+   ```
+   You can also seed the draft with initial fields:
+   ```bash
+   curl -X POST http://localhost:3000/api/seller/listings \
+     -H "x-api-key: <seller-api-key>" \
+     -H "content-type: application/json" \
+     -d '{
+       "category_id": "cat_cards",
+       "title": "1999 Charizard Holo PSA 8",
+       "description": "Clean slab, no cracks, centered well.",
+       "condition_code": "used_good",
+       "quantity_available": 1,
+       "price": {
+         "amount_minor": 125000,
+         "currency_code": "USD"
+       }
+     }'
    ```
 2. Request draft-scoped upload sessions:
    ```bash
@@ -123,6 +151,46 @@
      }'
    ```
    `alt_text` is optional, and `sort_order` is optional. If you omit `sort_order`, CMD Market defaults it from the media array order.
+5. Discover the current category metadata before patching attributes:
+   ```bash
+   curl http://localhost:3000/api/categories/trading-cards
+   ```
+6. Patch the draft with trading-card fields and attributes:
+   ```bash
+   curl -X PATCH http://localhost:3000/api/seller/listings/lst_123 \
+     -H "x-api-key: <seller-api-key>" \
+     -H "content-type: application/json" \
+     -d '{
+       "title": "1999 Charizard Holo PSA 8",
+       "description": "Clean slab, no cracks, centered well.",
+       "condition_code": "used_good",
+       "quantity_available": 1,
+       "price": {
+         "amount_minor": 125000,
+         "currency_code": "USD"
+       },
+       "attributes": [
+         {
+           "key": "grading_company",
+           "value": "psa"
+         },
+         {
+           "key": "grade",
+           "value": 8
+         }
+       ]
+     }'
+   ```
+7. Publish the draft:
+   ```bash
+   curl -X POST http://localhost:3000/api/seller/listings/lst_123/publish \
+     -H "x-api-key: <seller-api-key>"
+   ```
+   If the draft is incomplete, this route returns a `422` Problem Details response with `code: "listing_validation_failed"` and a field-level `errors` array.
+8. Read the canonical public listing:
+   ```bash
+   curl http://localhost:3000/api/listings/lst_123
+   ```
 
 ## Current Conventions
 
@@ -137,7 +205,7 @@ This repo follows a harness-style progressive disclosure model:
 
 - `README.md` and `AGENTS.md` are entrypoints
 - `apps/web/app/llms.txt/route.ts` serves generated LLM and agent guidance at `/llms.txt`
-- `apps/web/app/openapi.json/route.ts` serves the generated seller API description at `/openapi.json`
+- `apps/web/app/openapi.json/route.ts` serves the generated current API description at `/openapi.json`
 - `apps/web/lib/discovery/content.ts` is the shared source of truth for route intent and linked discovery docs
 - durable truth lives in focused docs
 - plans live in `docs/plans/`

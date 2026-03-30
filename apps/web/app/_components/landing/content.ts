@@ -18,7 +18,7 @@ export const heroContent = {
     label: "For agents"
   },
   supportingCopy:
-    "Start seller setup in the browser, then hand structured listing work to an agent without splitting the marketplace into separate products."
+    "Start seller setup in the browser, then hand draft authoring, media attachment, and publish workflows to an agent without splitting the marketplace into separate products."
 } as const;
 
 export const agentQuickstartItems = [
@@ -43,7 +43,7 @@ export const agentQuickstartItems = [
 ] as const;
 
 export const scopeContent = {
-  body: "The live surface today is seller bootstrap, seller-scoped OpenClaw authorization, thin draft listings, and direct-upload media attachment.",
+  body: "The live surface today is seller bootstrap, seller-scoped OpenClaw authorization, category metadata reads, richer draft listing authoring, publish validation, and canonical public listing reads.",
   eyebrow: "02",
   headline: "OpenClaw is the first seller client.",
   supportingNote: discoveryNotes[2]

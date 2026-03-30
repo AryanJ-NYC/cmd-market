@@ -3,6 +3,7 @@ export const discoverySummary =
 
 export const discoveryNotes = [
   "Use the public site to understand route intent, current scope, and seller entry points.",
+  "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
   "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and workspace selection."
@@ -30,7 +31,7 @@ export const publicRoutes = [
     title: "llms.txt"
   },
   {
-    description: "Machine-readable OpenAPI description for the currently implemented seller API routes.",
+    description: "Machine-readable OpenAPI description for the currently implemented public and seller API routes.",
     href: "/openapi.json",
     title: "OpenAPI"
   }
@@ -61,9 +62,19 @@ export const sellerApiRoutes = [
     title: "GET /api/seller/publishability"
   },
   {
-    description: "Create a thin seller-owned draft listing.",
+    description: "Create a seller-owned draft listing with optional initial listing fields.",
     href: "/api/seller/listings",
     title: "POST /api/seller/listings"
+  },
+  {
+    description: "Read a seller-owned draft or published listing resource.",
+    href: "/api/seller/listings/{listingId}",
+    title: "GET /api/seller/listings/{listingId}"
+  },
+  {
+    description: "Patch draft listing fields and typed category attributes.",
+    href: "/api/seller/listings/{listingId}",
+    title: "PATCH /api/seller/listings/{listingId}"
   },
   {
     description: "Mint draft-scoped direct-upload sessions for listing media.",
@@ -74,6 +85,29 @@ export const sellerApiRoutes = [
     description: "Attach uploaded media to a seller-owned draft listing.",
     href: "/api/seller/listings/{listingId}/media",
     title: "POST /api/seller/listings/{listingId}/media"
+  },
+  {
+    description: "Publish a draft listing once seller eligibility, media, and required attributes are complete.",
+    href: "/api/seller/listings/{listingId}/publish",
+    title: "POST /api/seller/listings/{listingId}/publish"
+  }
+] as const satisfies RouteLink[];
+
+export const publicApiRoutes = [
+  {
+    description: "List the current active public categories that agents can use for seller authoring flows.",
+    href: "/api/categories",
+    title: "GET /api/categories"
+  },
+  {
+    description: "Read category metadata, including required attributes and allowed values.",
+    href: "/api/categories/{categorySlug}",
+    title: "GET /api/categories/{categorySlug}"
+  },
+  {
+    description: "Read the canonical public listing resource after a draft has been published.",
+    href: "/api/listings/{listingId}",
+    title: "GET /api/listings/{listingId}"
   }
 ] as const satisfies RouteLink[];
 
@@ -87,7 +121,7 @@ export const sellerFlowSteps = [
     label: "Choose the active workspace"
   },
   {
-    body: "Create the OpenClaw seller API key in settings. The plaintext key is shown once and then used only on `/api/seller/*` routes.",
+    body: "Create the OpenClaw seller API key in settings. The plaintext key is shown once and then used only on `/api/seller/*` routes for draft authoring, media, and publish actions.",
     label: "Authorize the seller agent"
   }
 ] as const;
@@ -120,7 +154,7 @@ export const repoDocs = [
   }
 ] as const satisfies RouteLink[];
 
-export const openApiVersion = "0.1.0";
+export const openApiVersion = "0.2.0";
 
 export function rawGitHubUrl(path: string) {
   return `https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/${path}`;

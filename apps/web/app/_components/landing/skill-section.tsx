@@ -11,8 +11,8 @@ export function SkillSection({ monoClassName }: SkillSectionProps) {
         </h2>
 
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-400">
-          CMD Market exposes a public route map, a machine-readable seller API description, and the
-          current seller endpoints without pretending the homepage is the whole app.
+          CMD Market exposes a public route map, a machine-readable API description, and the
+          current public and seller endpoints without pretending the homepage is the whole app.
         </p>
 
         <div className="mt-12 border-y border-white/10">

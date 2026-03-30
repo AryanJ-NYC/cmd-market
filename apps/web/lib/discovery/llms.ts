@@ -1,6 +1,7 @@
 import {
   discoveryNotes,
   discoverySummary,
+  publicApiRoutes,
   publicRoutes,
   repoDocs,
   sellerApiRoutes,
@@ -20,6 +21,9 @@ export function buildLlmsText() {
     "",
     "## Seller Browser Routes",
     ...formatLinkSection(sellerBrowserRoutes),
+    "",
+    "## Public APIs",
+    ...formatLinkSection(publicApiRoutes),
     "",
     "## Seller APIs",
     ...formatLinkSection(sellerApiRoutes),

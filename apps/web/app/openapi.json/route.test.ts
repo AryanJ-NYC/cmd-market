@@ -9,5 +9,6 @@ describe("GET /openapi.json", () => {
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(body.openapi).toBe("3.1.0");
     expect(body.paths["/api/seller/context"]).toBeDefined();
+    expect(body.paths["/api/categories"]).toBeDefined();
   });
 });

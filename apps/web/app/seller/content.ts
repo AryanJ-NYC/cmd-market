@@ -4,7 +4,7 @@ export const sellerEntryContent = {
   boundaryNote: "API keys do not sign you into browser seller pages.",
   eyebrow: "Seller Entry",
   intro:
-    "Start in the browser to create or activate the seller workspace, then create the OpenClaw API key inside settings when you are ready to hand work to an agent.",
+    "Start in the browser to create or activate the seller workspace, then create the OpenClaw API key inside settings when you are ready to hand draft creation, category-aware patching, media attachment, and publish work to an agent.",
   links: [
     {
       description: "Start seller authentication through Twitter/X.",

@@ -10,7 +10,7 @@ This repository currently contains CMD Market's first real public and seller-fac
 - one Next.js web app in `apps/web`
 - shared TypeScript and Tailwind-related workspace packages
 - a public homepage, seller entry page, and generated discovery routes at `/llms.txt` and `/openapi.json`
-- browser seller bootstrap and seller-scoped API routes for the current draft-listing/media flow
+- browser seller bootstrap plus public category/listing reads and seller-scoped draft authoring, media, patch, and publish APIs
 
 ## Quick Start
 

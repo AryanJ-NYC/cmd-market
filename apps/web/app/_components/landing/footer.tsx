@@ -9,8 +9,8 @@ export function Footer({ monoClassName }: FooterProps) {
             <span className="text-cyan-400">$</span> cmd.market
           </p>
           <p className="text-sm text-stone-400">
-            Public discovery is open. Seller browser flows live under /seller. Seller API keys
-            stay on /api/seller/*.
+            Public discovery, category metadata, and published listing reads stay open. Seller
+            browser flows live under /seller. Seller API keys stay on /api/seller/*.
           </p>
         </div>
 

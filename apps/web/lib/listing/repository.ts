@@ -1,7 +1,8 @@
+import { Prisma } from "@prisma/client";
 import type {
-  Prisma,
+  AttributeValueType as PrismaAttributeValueType,
   PrismaClient,
-  listing as PrismaListingModel,
+  listingAttributeValue as PrismaListingAttributeValueModel,
   listingMedia as PrismaListingMediaModel,
 } from "@prisma/client";
 import { prisma } from "../db/client";
@@ -20,23 +21,24 @@ export class PrismaListingRepository implements ListingRepository {
     const listing = await this.database.$transaction(async (transaction) => {
       const created = await transaction.listing.create({
         data: {
+          categoryId: input.categoryId,
+          conditionCode: input.conditionCode,
           createdAt: input.createdAt,
           createdByApiKeyId: input.createdByApiKeyId,
           createdByUserId: input.createdByUserId,
+          description: input.description,
+          displayCurrencyCode: input.displayCurrencyCode,
           id: input.id,
+          quantityAvailable: input.quantityAvailable,
           sellerAccountId: input.sellerAccountId,
           status: "draft",
+          title: input.title,
+          unitPriceMinor: input.unitPriceMinor,
           updatedAt: input.updatedAt,
           updatedByApiKeyId: input.updatedByApiKeyId,
-          updatedByUserId: input.updatedByUserId
+          updatedByUserId: input.updatedByUserId,
         },
-        include: {
-          media: {
-            orderBy: {
-              sortOrder: "asc"
-            }
-          }
-        }
+        include: listingInclude,
       });
 
       await transaction.auditEvent.create({
@@ -50,11 +52,12 @@ export class PrismaListingRepository implements ListingRepository {
           entityTable: "listing",
           id: input.auditEventId,
           metadata: {
-            status: "draft"
+            categoryId: input.categoryId ?? null,
+            status: "draft",
           } as Prisma.InputJsonValue,
           note: null,
-          sellerAccountId: input.sellerAccountId
-        }
+          sellerAccountId: input.sellerAccountId,
+        },
       });
 
       return created;
@@ -65,24 +68,35 @@ export class PrismaListingRepository implements ListingRepository {
 
   async findListingById(listingId: string): Promise<ListingRecord | null> {
     const listing = await this.database.listing.findUnique({
-      include: {
-        media: {
-          orderBy: {
-            sortOrder: "asc"
-          }
-        }
-      },
+      include: listingInclude,
       where: {
-        id: listingId
-      }
+        id: listingId,
+      },
     });
 
     return listing ? mapListingModel(listing) : null;
   }
 
-  async attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord> {
+  async attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord | null> {
     try {
       const listing = await this.database.$transaction(async (transaction) => {
+        const updateResult = await transaction.listing.updateMany({
+          data: {
+            updatedAt: input.updatedAt,
+            updatedByApiKeyId: input.updatedByApiKeyId,
+            updatedByUserId: input.updatedByUserId,
+          },
+          where: {
+            id: input.listingId,
+            sellerAccountId: input.sellerAccountId,
+            status: "draft",
+          },
+        });
+
+        if (updateResult.count === 0) {
+          return null;
+        }
+
         await transaction.listingMedia.createMany({
           data: input.media.map((item) => ({
             altText: item.altText,
@@ -91,19 +105,8 @@ export class PrismaListingRepository implements ListingRepository {
             createdAt: item.createdAt,
             id: item.id,
             listingId: input.listingId,
-            sortOrder: item.sortOrder
-          }))
-        });
-
-        await transaction.listing.update({
-          data: {
-            updatedAt: input.updatedAt,
-            updatedByApiKeyId: input.updatedByApiKeyId,
-            updatedByUserId: input.updatedByUserId
-          },
-          where: {
-            id: input.listingId
-          }
+            sortOrder: item.sortOrder,
+          })),
         });
 
         await transaction.auditEvent.create({
@@ -117,24 +120,18 @@ export class PrismaListingRepository implements ListingRepository {
             entityTable: "listing",
             id: input.auditEventId,
             metadata: {
-              assetKeys: input.media.map((item) => item.assetKey)
+              assetKeys: input.media.map((item) => item.assetKey),
             } as Prisma.InputJsonValue,
             note: null,
-            sellerAccountId: input.sellerAccountId
-          }
+            sellerAccountId: input.sellerAccountId,
+          },
         });
 
         const updated = await transaction.listing.findUnique({
-          include: {
-            media: {
-              orderBy: {
-                sortOrder: "asc"
-              }
-            }
-          },
+          include: listingInclude,
           where: {
-            id: input.listingId
-          }
+            id: input.listingId,
+          },
         });
 
         if (!updated) {
@@ -144,7 +141,7 @@ export class PrismaListingRepository implements ListingRepository {
         return updated;
       });
 
-      return mapListingModel(listing);
+      return listing ? mapListingModel(listing) : null;
     } catch (error) {
       if (isDuplicateListingMediaAssetKeyError(error)) {
         throw new DuplicateListingMediaAssetKeyError();
@@ -153,26 +150,299 @@ export class PrismaListingRepository implements ListingRepository {
       throw error;
     }
   }
+
+  async updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord | null> {
+    const listing = await this.database.$transaction(async (transaction) => {
+      const updateResult = await transaction.listing.updateMany({
+        data: {
+          categoryId: input.categoryId,
+          conditionCode: input.conditionCode,
+          description: input.description,
+          displayCurrencyCode: input.displayCurrencyCode,
+          quantityAvailable: input.quantityAvailable,
+          title: input.title,
+          unitPriceMinor: input.unitPriceMinor,
+          updatedAt: input.updatedAt,
+          updatedByApiKeyId: input.updatedByApiKeyId,
+          updatedByUserId: input.updatedByUserId,
+        },
+        where: {
+          updatedAt: input.expectedUpdatedAt,
+          id: input.listingId,
+          sellerAccountId: input.sellerAccountId,
+          status: "draft",
+        },
+      });
+
+      if (updateResult.count === 0) {
+        return null;
+      }
+
+      if (input.removeCategoryAttributeIds.length > 0) {
+        await transaction.listingAttributeValue.deleteMany({
+          where: {
+            categoryAttributeId: {
+              in: input.removeCategoryAttributeIds,
+            },
+            listingId: input.listingId,
+          },
+        });
+      }
+
+      await Promise.all(
+        input.attributes.map((attribute) =>
+          transaction.listingAttributeValue.upsert({
+            create: {
+              categoryAttributeId: attribute.categoryAttributeId,
+              id: attribute.id,
+              listingId: input.listingId,
+              normalizedText: attribute.normalizedText,
+              valueBoolean: attribute.valueBoolean,
+              valueJson: toNullableJsonValue(attribute.valueJson),
+              valueNumber: attribute.valueNumber,
+              valueText: attribute.valueText,
+            },
+            update: {
+              normalizedText: attribute.normalizedText,
+              valueBoolean: attribute.valueBoolean,
+              valueJson: toNullableJsonValue(attribute.valueJson),
+              valueNumber: attribute.valueNumber,
+              valueText: attribute.valueText,
+            },
+            where: {
+              listingId_categoryAttributeId: {
+                categoryAttributeId: attribute.categoryAttributeId,
+                listingId: input.listingId,
+              },
+            },
+          }),
+        ),
+      );
+
+      await transaction.auditEvent.create({
+        data: {
+          action: "listing.updated",
+          actorApiKeyId: input.updatedByApiKeyId,
+          actorType: input.updatedByApiKeyId ? "api_key" : "user",
+          actorUserId: input.updatedByUserId,
+          createdAt: input.updatedAt,
+          entityId: input.listingId,
+          entityTable: "listing",
+          id: input.auditEventId,
+          metadata: {
+            attributeKeys: input.attributes.map((attribute) => attribute.key),
+            categoryId: input.categoryId,
+          } as Prisma.InputJsonValue,
+          note: null,
+          sellerAccountId: input.sellerAccountId,
+        },
+      });
+
+      const updated = await transaction.listing.findUnique({
+        include: listingInclude,
+        where: {
+          id: input.listingId,
+        },
+      });
+
+      if (!updated) {
+        throw new Error(`Missing listing: ${input.listingId}`);
+      }
+
+      return updated;
+    });
+
+    return listing ? mapListingModel(listing) : null;
+  }
+
+  async publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord | null> {
+    const listing = await this.database.$transaction(async (transaction) => {
+      const updateResult = await transaction.listing.updateMany({
+        data: {
+          publishedAt: input.publishedAt,
+          status: "published",
+          updatedAt: input.updatedAt,
+          updatedByApiKeyId: input.updatedByApiKeyId,
+          updatedByUserId: input.updatedByUserId,
+        },
+        where: {
+          updatedAt: input.expectedUpdatedAt,
+          id: input.listingId,
+          sellerAccountId: input.sellerAccountId,
+          status: "draft",
+        },
+      });
+
+      if (updateResult.count === 0) {
+        return null;
+      }
+
+      await transaction.auditEvent.create({
+        data: {
+          action: "listing.published",
+          actorApiKeyId: input.updatedByApiKeyId,
+          actorType: input.updatedByApiKeyId ? "api_key" : "user",
+          actorUserId: input.updatedByUserId,
+          createdAt: input.updatedAt,
+          entityId: input.listingId,
+          entityTable: "listing",
+          id: input.auditEventId,
+          metadata: {
+            publishedAt: input.publishedAt.toISOString(),
+            status: "published",
+          } as Prisma.InputJsonValue,
+          note: null,
+          sellerAccountId: input.sellerAccountId,
+        },
+      });
+
+      const published = await transaction.listing.findUnique({
+        include: listingInclude,
+        where: {
+          id: input.listingId,
+        },
+      });
+
+      if (!published) {
+        throw new Error(`Missing listing: ${input.listingId}`);
+      }
+
+      return published;
+    });
+
+    return listing ? mapListingModel(listing) : null;
+  }
+
+  async listActiveCategories(): Promise<CategoryRecord[]> {
+    const categories = await this.database.category.findMany({
+      include: categoryInclude,
+      orderBy: {
+        sortOrder: "asc",
+      },
+      where: {
+        isActive: true,
+      },
+    });
+
+    return categories.map(mapCategoryModel);
+  }
+
+  async findCategoryById(categoryId: string): Promise<CategoryRecord | null> {
+    const category = await this.database.category.findFirst({
+      include: categoryInclude,
+      where: {
+        id: categoryId,
+        isActive: true,
+      },
+    });
+
+    return category ? mapCategoryModel(category) : null;
+  }
+
+  async findCategoryBySlug(categorySlug: string): Promise<CategoryRecord | null> {
+    const category = await this.database.category.findFirst({
+      include: categoryInclude,
+      where: {
+        isActive: true,
+        slug: categorySlug,
+      },
+    });
+
+    return category ? mapCategoryModel(category) : null;
+  }
 }
 
 export const listingRepository = new PrismaListingRepository(prisma);
 
-function mapListingModel(
-  record: PrismaListingModel & {
-    media: PrismaListingMediaModel[];
-  }
-): ListingRecord {
+const categoryInclude = {
+  categoryAttributes: {
+    include: {
+      attributeDefinition: true,
+    },
+    orderBy: {
+      sortOrder: "asc",
+    },
+  },
+} satisfies Prisma.categoryInclude;
+
+const listingInclude = {
+  attributeValues: {
+    include: {
+      categoryAttribute: {
+        include: {
+          attributeDefinition: true,
+        },
+      },
+    },
+    orderBy: {
+      categoryAttribute: {
+        sortOrder: "asc",
+      },
+    },
+  },
+  category: {
+    include: categoryInclude,
+  },
+  media: {
+    orderBy: {
+      sortOrder: "asc",
+    },
+  },
+  sellerAccount: {
+    include: {
+      organization: true,
+    },
+  },
+} satisfies Prisma.listingInclude;
+
+function mapListingModel(record: ListingModel): ListingRecord {
   return {
+    attributes: record.attributeValues.map(mapListingAttributeValueModel),
+    category: record.category ? mapCategoryModel(record.category) : null,
+    closedAt: record.closedAt,
+    conditionCode: record.conditionCode,
     createdAt: record.createdAt,
     createdByApiKeyId: record.createdByApiKeyId,
     createdByUserId: record.createdByUserId,
+    description: record.description,
+    displayCurrencyCode: record.displayCurrencyCode,
     id: record.id,
     media: record.media.map(mapListingMediaModel),
+    publishedAt: record.publishedAt,
+    quantityAvailable: record.quantityAvailable,
+    seller: {
+      displayName: record.sellerAccount.organization.name,
+      id: record.sellerAccount.id,
+      slug: record.sellerAccount.organization.slug,
+    },
     sellerAccountId: record.sellerAccountId,
-    status: toListingStatus(record.status),
+    status: record.status,
+    title: record.title,
+    unitPriceMinor: record.unitPriceMinor,
     updatedAt: record.updatedAt,
     updatedByApiKeyId: record.updatedByApiKeyId,
-    updatedByUserId: record.updatedByUserId
+    updatedByUserId: record.updatedByUserId,
+  };
+}
+
+function mapCategoryModel(record: CategoryModel): CategoryRecord {
+  return {
+    attributes: record.categoryAttributes.map(mapCategoryAttributeModel),
+    description: record.description,
+    id: record.id,
+    name: record.name,
+    slug: record.slug,
+  };
+}
+
+function mapCategoryAttributeModel(record: CategoryAttributeModel): CategoryAttributeRecord {
+  return {
+    allowedValues: toAllowedValues(record.allowedValuesJson),
+    id: record.id,
+    isRequired: record.isRequired,
+    key: record.attributeDefinition.key,
+    label: record.attributeDefinition.label,
+    valueType: record.attributeDefinition.valueType,
   };
 }
 
@@ -183,16 +453,66 @@ function mapListingMediaModel(record: PrismaListingMediaModel): ListingMediaReco
     assetType: record.assetType,
     createdAt: record.createdAt,
     id: record.id,
-    sortOrder: record.sortOrder
+    sortOrder: record.sortOrder,
   };
 }
 
-function toListingStatus(value: string): ListingStatus {
-  if (value === "draft" || value === "published" || value === "reserved" || value === "sold" || value === "cancelled" || value === "expired") {
-    return value;
+function mapListingAttributeValueModel(
+  record: PrismaListingAttributeValueModel & {
+    categoryAttribute: {
+      attributeDefinition: {
+        key: string;
+        label: string;
+        valueType: PrismaAttributeValueType;
+      };
+      id: string;
+    };
+  },
+): ListingAttributeValueRecord {
+  return {
+    categoryAttributeId: record.categoryAttribute.id,
+    key: record.categoryAttribute.attributeDefinition.key,
+    label: record.categoryAttribute.attributeDefinition.label,
+    value: getAttributeValue(record),
+    valueType: record.categoryAttribute.attributeDefinition.valueType,
+  };
+}
+
+function getAttributeValue(
+  record: Pick<
+    PrismaListingAttributeValueModel,
+    "valueBoolean" | "valueJson" | "valueNumber" | "valueText"
+  >,
+): ListingAttributeValueRecord["value"] {
+  if (record.valueText != null) {
+    return record.valueText;
   }
 
-  throw new Error(`Unknown listing status: ${value}`);
+  if (record.valueNumber != null) {
+    return record.valueNumber;
+  }
+
+  if (record.valueBoolean != null) {
+    return record.valueBoolean;
+  }
+
+  if (record.valueJson != null) {
+    return record.valueJson as Record<string, unknown> | unknown[];
+  }
+
+  throw new Error("Listing attribute value is missing typed data.");
+}
+
+function toAllowedValues(value: Prisma.JsonValue | null): string[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  return value.every((item) => typeof item === "string") ? value : null;
+}
+
+function toNullableJsonValue(value: Prisma.InputJsonValue | null) {
+  return value === null ? Prisma.DbNull : value;
 }
 
 function isDuplicateListingMediaAssetKeyError(error: unknown) {
@@ -217,35 +537,56 @@ function includesConstraintTarget(target: string[], candidates: string[]) {
 }
 
 function isPrismaUniqueConstraintError(
-  error: unknown
+  error: unknown,
 ): error is {
   code: "P2002";
   meta?: {
     target?: string | string[];
   };
 } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "P2002"
-  );
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
+type CategoryModel = Prisma.categoryGetPayload<{
+  include: typeof categoryInclude;
+}>;
+
+type CategoryAttributeModel = CategoryModel["categoryAttributes"][number];
+
+type ListingModel = Prisma.listingGetPayload<{
+  include: typeof listingInclude;
+}>;
+
 export type ListingRepository = {
-  attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord>;
+  attachMediaToDraftListing(input: AttachMediaToDraftListingInput): Promise<ListingRecord | null>;
   createDraftListing(input: CreateDraftListingInput): Promise<ListingRecord>;
+  findCategoryById(categoryId: string): Promise<CategoryRecord | null>;
+  findCategoryBySlug(categorySlug: string): Promise<CategoryRecord | null>;
   findListingById(listingId: string): Promise<ListingRecord | null>;
+  listActiveCategories(): Promise<CategoryRecord[]>;
+  publishDraftListing(input: PublishDraftListingInput): Promise<ListingRecord | null>;
+  updateDraftListing(input: UpdateDraftListingInput): Promise<ListingRecord | null>;
 };
 
 export type ListingRecord = {
+  attributes: ListingAttributeValueRecord[];
+  category: CategoryRecord | null;
+  closedAt: Date | null;
+  conditionCode: string | null;
   createdAt: Date;
   createdByApiKeyId: string | null;
   createdByUserId: string | null;
+  description: string | null;
+  displayCurrencyCode: string;
   id: string;
   media: ListingMediaRecord[];
+  publishedAt: Date | null;
+  quantityAvailable: number | null;
+  seller: ListingSellerRecord;
   sellerAccountId: string;
   status: ListingStatus;
+  title: string | null;
+  unitPriceMinor: number | null;
   updatedAt: Date;
   updatedByApiKeyId: string | null;
   updatedByUserId: string | null;
@@ -260,13 +601,51 @@ export type ListingMediaRecord = {
   sortOrder: number;
 };
 
+export type CategoryRecord = {
+  attributes: CategoryAttributeRecord[];
+  description: string | null;
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type CategoryAttributeRecord = {
+  allowedValues: string[] | null;
+  id: string;
+  isRequired: boolean;
+  key: string;
+  label: string;
+  valueType: AttributeValueType;
+};
+
+export type ListingAttributeValueRecord = {
+  categoryAttributeId: string;
+  key: string;
+  label: string;
+  value: boolean | number | string | Record<string, unknown> | unknown[];
+  valueType: AttributeValueType;
+};
+
+type ListingSellerRecord = {
+  displayName: string;
+  id: string;
+  slug: string;
+};
+
 type CreateDraftListingInput = {
   auditEventId: string;
+  categoryId: string | null;
+  conditionCode: string | null;
   createdAt: Date;
   createdByApiKeyId: string | null;
   createdByUserId: string | null;
+  description: string | null;
+  displayCurrencyCode: string;
   id: string;
+  quantityAvailable: number | null;
   sellerAccountId: string;
+  title: string | null;
+  unitPriceMinor: number | null;
   updatedAt: Date;
   updatedByApiKeyId: string | null;
   updatedByUserId: string | null;
@@ -289,4 +668,46 @@ type AttachMediaToDraftListingInput = {
   updatedByUserId: string | null;
 };
 
+type UpdateDraftListingInput = {
+  attributes: Array<{
+    categoryAttributeId: string;
+    id: string;
+    key: string;
+    label: string;
+    normalizedText: string | null;
+    valueBoolean: boolean | null;
+    valueJson: Prisma.InputJsonValue | null;
+    valueNumber: number | null;
+    valueText: string | null;
+  }>;
+  auditEventId: string;
+  categoryId: string | null;
+  conditionCode: string | null;
+  description: string | null;
+  displayCurrencyCode: string;
+  expectedUpdatedAt: Date;
+  listingId: string;
+  quantityAvailable: number | null;
+  removeCategoryAttributeIds: string[];
+  sellerAccountId: string;
+  title: string | null;
+  unitPriceMinor: number | null;
+  updatedAt: Date;
+  updatedByApiKeyId: string | null;
+  updatedByUserId: string | null;
+};
+
+type PublishDraftListingInput = {
+  auditEventId: string;
+  expectedUpdatedAt: Date;
+  listingId: string;
+  publishedAt: Date;
+  sellerAccountId: string;
+  updatedAt: Date;
+  updatedByApiKeyId: string | null;
+  updatedByUserId: string | null;
+};
+
 type ListingStatus = "draft" | "published" | "reserved" | "sold" | "cancelled" | "expired";
+
+type AttributeValueType = "text" | "number" | "boolean" | "enum" | "json";

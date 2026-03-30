@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { openApiVersion } from "../../../lib/discovery/content";
 import { heroContent } from "./content";
 
 export function HeroSection({ monoClassName }: HeroSectionProps) {
@@ -77,7 +78,7 @@ export function HeroSection({ monoClassName }: HeroSectionProps) {
         className={`pointer-events-none absolute right-6 top-6 hidden text-xs text-stone-600 lg:block ${monoClassName}`}
         aria-hidden="true"
       >
-        v0.1.0
+        v{openApiVersion}
       </div>
     </section>
   );

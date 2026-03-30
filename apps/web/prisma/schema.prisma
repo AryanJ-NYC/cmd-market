@@ -18,6 +18,23 @@ enum SellerEligibilitySource {
   x_verification
 }
 
+enum ListingStatus {
+  draft
+  published
+  reserved
+  sold
+  cancelled
+  expired
+}
+
+enum AttributeValueType {
+  text
+  number
+  boolean
+  enum
+  json
+}
+
 model user {
   id              String       @id @default(cuid())
   name            String
@@ -186,6 +203,54 @@ model sellerAccount {
   @@map("seller_account")
 }
 
+model category {
+  id                String              @id
+  slug              String              @unique
+  name              String
+  description       String?
+  sortOrder         Int                 @default(0) @map("sort_order")
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  categoryAttributes categoryAttribute[]
+  listings          listing[]
+
+  @@map("category")
+}
+
+model attributeDefinition {
+  id               String              @id
+  key              String              @unique
+  label            String
+  valueType        AttributeValueType  @map("value_type")
+  unitLabel        String?             @map("unit_label")
+  configurationJson Json?              @map("configuration_json")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  categoryAttributes categoryAttribute[]
+
+  @@map("attribute_definition")
+}
+
+model categoryAttribute {
+  id                   String               @id
+  categoryId           String               @map("category_id")
+  attributeDefinitionId String              @map("attribute_definition_id")
+  isRequired           Boolean              @default(false) @map("is_required")
+  isFilterable         Boolean              @default(false) @map("is_filterable")
+  isSortable           Boolean              @default(false) @map("is_sortable")
+  sortOrder            Int                  @default(0) @map("sort_order")
+  allowedValuesJson    Json?                @map("allowed_values_json")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  attributeDefinition  attributeDefinition  @relation(fields: [attributeDefinitionId], references: [id], onDelete: Cascade)
+  category             category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  listingAttributeValues listingAttributeValue[]
+
+  @@unique([categoryId, attributeDefinitionId])
+  @@map("category_attribute")
+}
+
 model auditEvent {
   id              String         @id
   entityTable     String         @map("entity_table")
@@ -207,23 +272,35 @@ model auditEvent {
 }
 
 model listing {
-  id               String       @id
-  sellerAccountId  String       @map("seller_account_id")
-  status           String       @default("draft")
-  createdByUserId  String?      @map("created_by_user_id")
-  createdByApiKeyId String?     @map("created_by_api_key_id")
-  updatedByUserId  String?      @map("updated_by_user_id")
-  updatedByApiKeyId String?     @map("updated_by_api_key_id")
-  createdAt        DateTime     @default(now()) @map("created_at")
-  updatedAt        DateTime     @updatedAt @map("updated_at")
-  createdByApiKey  apikey?      @relation("listingCreatedByApiKey", fields: [createdByApiKeyId], references: [id], onDelete: SetNull)
-  createdByUser    user?        @relation("listingCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  media            listingMedia[]
-  sellerAccount    sellerAccount @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
-  updatedByApiKey  apikey?      @relation("listingUpdatedByApiKey", fields: [updatedByApiKeyId], references: [id], onDelete: SetNull)
-  updatedByUser    user?        @relation("listingUpdatedByUser", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  id                 String                 @id
+  sellerAccountId    String                 @map("seller_account_id")
+  categoryId         String?                @map("category_id")
+  title              String?
+  description        String?
+  conditionCode      String?                @map("condition_code")
+  quantityAvailable  Int?                   @map("quantity_available")
+  unitPriceMinor     Int?                   @map("unit_price_minor")
+  displayCurrencyCode String                @default("USD") @map("display_currency_code")
+  status             ListingStatus          @default(draft)
+  publishedAt        DateTime?              @map("published_at")
+  closedAt           DateTime?              @map("closed_at")
+  createdByUserId    String?                @map("created_by_user_id")
+  createdByApiKeyId  String?                @map("created_by_api_key_id")
+  updatedByUserId    String?                @map("updated_by_user_id")
+  updatedByApiKeyId  String?                @map("updated_by_api_key_id")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  attributeValues    listingAttributeValue[]
+  category           category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdByApiKey    apikey?                @relation("listingCreatedByApiKey", fields: [createdByApiKeyId], references: [id], onDelete: SetNull)
+  createdByUser      user?                  @relation("listingCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  media              listingMedia[]
+  sellerAccount      sellerAccount          @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
+  updatedByApiKey    apikey?                @relation("listingUpdatedByApiKey", fields: [updatedByApiKeyId], references: [id], onDelete: SetNull)
+  updatedByUser      user?                  @relation("listingUpdatedByUser", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([sellerAccountId])
+  @@index([categoryId])
   @@map("listing")
 }
 
@@ -240,4 +317,23 @@ model listingMedia {
   @@index([listingId])
   @@unique([listingId, assetKey])
   @@map("listing_media")
+}
+
+model listingAttributeValue {
+  id                String            @id
+  listingId         String            @map("listing_id")
+  categoryAttributeId String          @map("category_attribute_id")
+  valueText         String?           @map("value_text")
+  valueNumber       Float?            @map("value_number")
+  valueBoolean      Boolean?          @map("value_boolean")
+  valueJson         Json?             @map("value_json")
+  normalizedText    String?           @map("normalized_text")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  categoryAttribute categoryAttribute @relation(fields: [categoryAttributeId], references: [id], onDelete: Cascade)
+  listing           listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([categoryAttributeId])
+  @@unique([listingId, categoryAttributeId])
+  @@map("listing_attribute_value")
 }
