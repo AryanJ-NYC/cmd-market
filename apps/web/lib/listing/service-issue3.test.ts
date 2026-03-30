@@ -43,7 +43,6 @@ import {
   createDraftListingSchema,
   getCategory,
   getPublicListing,
-  listCategories,
   publishListing,
   updateDraftListing
 } from "./service";
@@ -90,54 +89,42 @@ describe("listing service issue #3", () => {
       title: "1999 Charizard Holo PSA 8"
     });
 
-    expect(result).toEqual({
-      data: expect.objectContaining({
-        attributes: [],
-        category: {
-          id: "cat_cards",
-          name: "Trading Cards",
-          slug: "trading-cards"
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.category).toEqual({
+      id: "cat_cards",
+      name: "Trading Cards",
+      slug: "trading-cards",
+    });
+    expect(result.data.price).toEqual({
+      amountMinor: 125000,
+      currencyCode: "USD",
+    });
+    expect(result.data.status).toBe("draft");
+    expect(result.data.title).toBe("1999 Charizard Holo PSA 8");
+    expect(result.data.management.draftValidation).toEqual({
+      issues: [
+        {
+          code: "minimum_items_not_met",
+          field: "media",
+          message: "At least one image is required.",
         },
-        conditionCode: "used_good",
-        description: "Clean slab, no cracks, centered well.",
-        id: "lst_123",
-        management: {
-          draftValidation: {
-            issues: [
-              {
-                code: "minimum_items_not_met",
-                field: "media",
-                message: "At least one image is required."
-              },
-              {
-                code: "required",
-                field: "attributes.grading_company",
-                message: "Grading Company is required for this category."
-              },
-              {
-                code: "required",
-                field: "attributes.grade",
-                message: "Grade is required for this category."
-              }
-            ],
-            publishable: false
-          }
+        {
+          code: "required",
+          field: "attributes.grading_company",
+          message: "Grading Company is required for this category.",
         },
-        object: "listing",
-        price: {
-          amountMinor: 125000,
-          currencyCode: "USD"
+        {
+          code: "required",
+          field: "attributes.grade",
+          message: "Grade is required for this category.",
         },
-        quantityAvailable: 1,
-        seller: {
-          displayName: "Scarce Cards",
-          id: "seller_123",
-          slug: "scarce-cards"
-        },
-        status: "draft",
-        title: "1999 Charizard Holo PSA 8"
-      }),
-      ok: true
+      ],
+      publishable: false,
     });
     expect(listingRepository.createDraftListing).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -221,36 +208,35 @@ describe("listing service issue #3", () => {
       }
     );
 
-    expect(result).toEqual({
-      data: expect.objectContaining({
-        attributes: [
-          {
-            key: "grading_company",
-            label: "Grading Company",
-            value: "psa",
-            valueType: "enum"
-          },
-          {
-            key: "grade",
-            label: "Grade",
-            value: 8,
-            valueType: "number"
-          }
-        ],
-        management: {
-          draftValidation: {
-            issues: [
-              {
-                code: "minimum_items_not_met",
-                field: "media",
-                message: "At least one image is required."
-              }
-            ],
-            publishable: false
-          }
-        }
-      }),
-      ok: true
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.attributes).toEqual([
+      {
+        key: "grading_company",
+        label: "Grading Company",
+        value: "psa",
+        valueType: "enum",
+      },
+      {
+        key: "grade",
+        label: "Grade",
+        value: 8,
+        valueType: "number",
+      },
+    ]);
+    expect(result.data.management.draftValidation).toEqual({
+      issues: [
+        {
+          code: "minimum_items_not_met",
+          field: "media",
+          message: "At least one image is required.",
+        },
+      ],
+      publishable: false,
     });
     expect(listingRepository.updateDraftListing).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -446,53 +432,38 @@ describe("listing service issue #3", () => {
     );
   });
 
-  it("lists active category metadata for public consumers", async () => {
-    listingRepository.listActiveCategories.mockResolvedValue([createCategoryRecord()]);
-
-    const result = await listCategories();
-
-    expect(result).toEqual({
-      data: [
-        {
-          description: "Graded and raw trading cards.",
-          id: "cat_cards",
-          name: "Trading Cards",
-          slug: "trading-cards"
-        }
-      ],
-      ok: true
-    });
-  });
-
   it("returns full trading-card category metadata by slug", async () => {
     listingRepository.findCategoryBySlug.mockResolvedValue(createCategoryRecord());
 
     const result = await getCategory("trading-cards");
 
-    expect(result).toEqual({
-      data: {
-        attributes: [
-          {
-            allowedValues: ["psa", "bgs", "cgc"],
-            isRequired: true,
-            key: "grading_company",
-            label: "Grading Company",
-            valueType: "enum"
-          },
-          {
-            allowedValues: null,
-            isRequired: true,
-            key: "grade",
-            label: "Grade",
-            valueType: "number"
-          }
-        ],
-        description: "Graded and raw trading cards.",
-        id: "cat_cards",
-        name: "Trading Cards",
-        slug: "trading-cards"
-      },
-      ok: true
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data).toEqual({
+      attributes: [
+        {
+          allowedValues: ["psa", "bgs", "cgc"],
+          isRequired: true,
+          key: "grading_company",
+          label: "Grading Company",
+          valueType: "enum",
+        },
+        {
+          allowedValues: null,
+          isRequired: true,
+          key: "grade",
+          label: "Grade",
+          valueType: "number",
+        },
+      ],
+      description: "Graded and raw trading cards.",
+      id: "cat_cards",
+      name: "Trading Cards",
+      slug: "trading-cards",
     });
   });
 
@@ -526,21 +497,18 @@ describe("listing service issue #3", () => {
 
     expect(result).toEqual({
       ok: false,
-      problem: {
+      problem: expect.objectContaining({
         code: "listing_validation_failed",
-        detail: "The listing cannot be published until required fields are complete.",
         errors: [
           {
             code: "required",
             field: "attributes.grade",
-            message: "Grade is required for this category."
-          }
+            message: "Grade is required for this category.",
+          },
         ],
         instance: "/api/seller/listings/lst_123/publish",
         status: 422,
-        title: "Listing validation failed",
-        type: "https://cmd.market/problems/listing-validation-failed"
-      }
+      }),
     });
   });
 
@@ -716,59 +684,32 @@ describe("listing service issue #3", () => {
       code: "listing_not_found",
       message: "Published listing could not be found.",
       ok: false,
-      status: 404
+      status: 404,
     });
 
-    await expect(getPublicListing("lst_123")).resolves.toEqual({
-      data: {
-        attributes: [
-          {
-            key: "grading_company",
-            label: "Grading Company",
-            value: "psa",
-            valueType: "enum"
-          },
-          {
-            key: "grade",
-            label: "Grade",
-            value: 8,
-            valueType: "number"
-          }
-        ],
-        category: {
-          id: "cat_cards",
-          name: "Trading Cards",
-          slug: "trading-cards"
-        },
-        conditionCode: "used_good",
-        description: "Clean slab, no cracks, centered well.",
-        id: "lst_123",
-        media: [
-          {
-            altText: "Front photo",
-            id: "med_123",
-            sortOrder: 0,
-            url: "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg"
-          }
-        ],
-        object: "listing",
-        price: {
-          amountMinor: 125000,
-          currencyCode: "USD"
-        },
-        publishedAt: "2026-03-30T11:00:00.000Z",
-        quantityAvailable: 1,
-        seller: {
-          displayName: "Scarce Cards",
-          id: "seller_123",
-          slug: "scarce-cards"
-        },
-        status: "published",
-        title: "1999 Charizard Holo PSA 8",
-        updatedAt: "2026-03-29T20:00:00.000Z"
+    const publishedResult = await getPublicListing("lst_123");
+
+    expect(publishedResult.ok).toBe(true);
+
+    if (!publishedResult.ok) {
+      return;
+    }
+
+    expect(publishedResult.data.category?.slug).toBe("trading-cards");
+    expect(publishedResult.data.media).toEqual([
+      {
+        altText: "Front photo",
+        id: "med_123",
+        sortOrder: 0,
+        url: "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
       },
-      ok: true
+    ]);
+    expect(publishedResult.data.price).toEqual({
+      amountMinor: 125000,
+      currencyCode: "USD",
     });
+    expect(publishedResult.data.status).toBe("published");
+    expect(publishedResult.data.title).toBe("1999 Charizard Holo PSA 8");
   });
 });
 

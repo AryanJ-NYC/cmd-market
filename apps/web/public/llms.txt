@@ -1,160 +1,107 @@
 # CMD Market
 
-> CMD Market is a Scarce City marketplace where sellers bootstrap identity in the web app and agents such as OpenClaw act through seller-workspace API keys.
+> CMD Market is a Scarce City marketplace where humans bootstrap seller workspaces in the web app and agents such as OpenClaw act through seller-scoped API keys.
 
-CMD Market currently exposes seller bootstrap, draft listing authoring for trading cards, direct image upload, publish validation, and a public listing read API. Use the web app for human bootstrap, then prefer seller APIs over UI scraping once an API key exists.
+CMD Market currently supports seller bootstrap, trading-card draft authoring, direct image upload, publish validation, and public listing read APIs.
 
-OpenClaw guidance:
+## Auth Boundary
 
-1. If no CMD Market API key is available yet, send the human to [Sign In](/sign-in).
-2. The human must complete seller workspace bootstrap in [Seller Workspace](/seller/workspace).
-3. The human must create the OpenClaw key in [Seller Settings](/seller/settings). CMD Market allows one organization-owned OpenClaw key per seller workspace, and the plaintext key is shown only once at creation time.
-4. Store that key securely and send it on every seller API request as the `x-api-key` header.
-5. Verify seller scope with [Seller Context API](/api/seller/context).
-6. Check seller eligibility with [Seller Publishability API](/api/seller/publishability).
-7. Read category metadata first:
-   - [List Categories API](/api/categories)
-   - [Trading Cards Category API](/api/categories/trading-cards)
-8. Create a draft listing with [Create Draft Listing API](/api/seller/listings). You may send `{}` for a blank draft, or provide initial fields such as:
-   - `category_id`
-   - `title`
-   - `description`
-   - `condition_code`
-   - `quantity_available`
-   - `price.amount_minor`
-   - `price.currency_code`
-9. Request draft-scoped upload sessions with [Create Upload Sessions API](/api/seller/upload-sessions). This request requires:
-   - `listing_id`
-   - `files[].filename`
-   - `files[].content_type`
-   - `files[].size_bytes`
-10. Upload image bytes directly to the returned presigned `PUT` URL.
-11. Attach uploaded assets to the draft with `POST /api/seller/listings/{listing_id}/media`. The minimal accepted body is:
-    ```json
-    {
-      "media": [
-        {
-          "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
-        }
-      ]
-    }
-    ```
-    `alt_text` is optional. `sort_order` is optional and defaults to the item's array position.
-12. Update the draft with `PATCH /api/seller/listings/{listing_id}`. For the seeded trading-card category, send:
-    - base fields such as `title`, `description`, `condition_code`, `quantity_available`, and `price`
-    - `attributes` entries for:
-      - `grading_company`
-      - `grade`
-13. Publish with `POST /api/seller/listings/{listing_id}/publish`.
-14. Read the public listing at `GET /api/listings/{listing_id}` after publish succeeds.
-
-Operational notes:
-
-- OpenClaw should not attempt Twitter/X OAuth directly in this issue slice. The human completes browser sign-in and workspace setup first.
-- `GET /api/seller/context` accepts either a browser session or `x-api-key` and returns the resolved seller workspace plus actor metadata.
-- `GET /api/seller/publishability` returns `200` when the resolved seller workspace is publishable and `403` when the seller exists but is not yet eligible.
+- Human browser bootstrap starts at [Sign In](/sign-in).
+- The human must create or select a workspace in [Seller Workspace](/seller/workspace).
+- The human must create the organization-owned OpenClaw key in [Seller Settings](/seller/settings).
+- Send that key on seller API requests as the `x-api-key` header.
 - API keys authenticate seller API routes only. They do not authenticate browser `/seller/*` UI routes.
 - Browser seller UI still requires a browser session.
-- `GET /api/categories` and `GET /api/categories/{slug}` are public and do not require seller auth.
-- `POST /api/seller/listings` creates a seller-owned draft listing and can accept optional initial draft fields.
-- `GET /api/seller/listings/{listing_id}` returns the seller-owned draft or published listing with `management.draft_validation`.
-- `PATCH /api/seller/listings/{listing_id}` updates listing fields and category-scoped attributes.
-- `POST /api/seller/listings/{listing_id}/publish` returns `422` with `code: "listing_validation_failed"` when the draft is incomplete.
-- `GET /api/listings/{listing_id}` only returns published listings.
-- `POST /api/seller/upload-sessions` only authenticates seller API routes. It does not authenticate browser `/seller/*` UI.
-- `POST /api/seller/upload-sessions` requires a seller-owned draft `listing_id` and only accepts image MIME types in this slice.
-- `POST /api/seller/listings/:listingId/media` requires `asset_key` values under `listings/drafts/{listing_id}/...`.
-- `POST /api/seller/listings/:listingId/media` also verifies the uploaded object exists in Spaces before it is attached.
 - A `409 organization_context_required` response means a human session exists but no active seller workspace is selected.
 - A `429 RATE_LIMITED` response includes `retryAfterMs` in the JSON error body and `Retry-After` in the response headers.
 
-Agent request sequence:
+## OpenClaw Flow
 
-1. `GET /api/categories/trading-cards` and cache the required attribute keys.
-2. `POST /api/seller/listings` with `x-api-key` and either `{}` or initial listing fields.
-3. Read the returned draft `id`.
-4. `POST /api/seller/upload-sessions` with `x-api-key` and:
-   ```json
-   {
-     "listing_id": "lst_123",
-     "files": [
-       {
-         "filename": "front.jpg",
-         "content_type": "image/jpeg",
-         "size_bytes": 2488331
-       }
-     ]
-   }
-   ```
-5. Upload bytes directly to the returned presigned `PUT` URL using the returned `content-type` header.
-6. `POST /api/seller/listings/{listing_id}/media` with `x-api-key` and:
-   ```json
-   {
-     "media": [
-       {
-         "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
-       }
-     ]
-   }
-   ```
-   Optional fields per item:
-   - `alt_text`
-   - `sort_order`
-7. `PATCH /api/seller/listings/{listing_id}` with `x-api-key` and:
-   ```json
-   {
-     "title": "1999 Charizard Holo PSA 8",
-     "description": "Clean slab, no cracks, centered well.",
-     "condition_code": "used_good",
-     "quantity_available": 1,
-     "price": {
-       "amount_minor": 125000,
-       "currency_code": "USD"
-     },
-     "attributes": [
-       {
-         "key": "grading_company",
-         "value": "psa"
-       },
-       {
-         "key": "grade",
-         "value": 8
-       }
-     ]
-   }
-   ```
-8. `POST /api/seller/listings/{listing_id}/publish` with `x-api-key`.
-9. If publish returns `422 listing_validation_failed`, inspect the field-level `errors` array and patch the draft before retrying.
-10. `GET /api/listings/{listing_id}` to read the canonical published listing.
-
-## Human Bootstrap
-
-- [Sign In](/sign-in): Start seller authentication through Twitter/X.
-- [Seller Workspace](/seller/workspace): Create or select the seller workspace to activate.
-- [Seller Settings](/seller/settings): Create the organization-owned OpenClaw key for the active seller workspace.
+1. If no CMD Market API key exists yet, send the human to [Sign In](/sign-in), then [Seller Workspace](/seller/workspace), then [Seller Settings](/seller/settings).
+2. Verify seller scope with [Seller Context API](/api/seller/context).
+3. Check seller eligibility with [Seller Publishability API](/api/seller/publishability).
+4. Read category metadata from [List Categories API](/api/categories) or [Trading Cards Category API](/api/categories/trading-cards).
+5. Create a draft with `POST /api/seller/listings`.
+6. Request upload sessions with `POST /api/seller/upload-sessions`.
+7. Upload image bytes directly to the returned presigned `PUT` URL.
+8. Attach uploaded assets with `POST /api/seller/listings/{listing_id}/media`.
+9. Patch listing fields and attributes with `PATCH /api/seller/listings/{listing_id}`.
+10. Publish with `POST /api/seller/listings/{listing_id}/publish`.
+11. Read the canonical public listing with `GET /api/listings/{listing_id}`.
 
 ## Seller APIs
 
-- [Seller Context API](/api/seller/context): Resolve seller scope for the current browser session or `x-api-key`.
-- [Seller Publishability API](/api/seller/publishability): Check whether the resolved seller workspace is eligible to publish.
-- [List Categories API](/api/categories): Read active public category metadata.
-- [Trading Cards Category API](/api/categories/trading-cards): Read required trading-card attribute metadata.
-- [Create Draft Listing API](/api/seller/listings): Create a seller-owned draft listing.
-- `GET /api/seller/listings/{listing_id}`: Read a seller-owned listing with management validation details.
-- `PATCH /api/seller/listings/{listing_id}`: Update draft listing fields and attributes.
-- [Create Upload Sessions API](/api/seller/upload-sessions): Mint presigned direct-upload sessions for a seller-owned draft listing.
-- `POST /api/seller/listings/{listing_id}/media`: Attach uploaded assets to a seller-owned draft listing.
-- `POST /api/seller/listings/{listing_id}/publish`: Publish a complete draft listing.
-- `GET /api/listings/{listing_id}`: Read the canonical public listing after publish.
+- [Seller Context API](/api/seller/context): resolve seller scope for the current browser session or `x-api-key`.
+- [Seller Publishability API](/api/seller/publishability): check whether the resolved seller workspace is eligible to publish.
+- [List Categories API](/api/categories): read active public category metadata.
+- [Trading Cards Category API](/api/categories/trading-cards): read required trading-card attribute metadata.
+- [Create Draft Listing API](/api/seller/listings): create a seller-owned draft listing. You may send `{}` for a blank draft or include `category_id`, `title`, `description`, `condition_code`, `quantity_available`, and `price`.
+- `GET /api/seller/listings/{listing_id}`: read a seller-owned listing with `management.draft_validation`.
+- `PATCH /api/seller/listings/{listing_id}`: update draft listing fields and attributes.
+- [Create Upload Sessions API](/api/seller/upload-sessions): mint presigned direct-upload sessions for a seller-owned draft listing.
+- `POST /api/seller/listings/{listing_id}/media`: attach uploaded assets to a seller-owned draft listing.
+- `POST /api/seller/listings/{listing_id}/publish`: publish a complete draft listing.
+- `GET /api/listings/{listing_id}`: read the canonical public listing after publish.
+
+## Request Shapes
+
+- `POST /api/seller/upload-sessions` requires:
+  - `listing_id`
+  - `files[].filename`
+  - `files[].content_type`
+  - `files[].size_bytes`
+- `POST /api/seller/listings/{listing_id}/media` requires:
+  ```json
+  {
+    "media": [
+      {
+        "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
+      }
+    ]
+  }
+  ```
+  `alt_text` is optional. `sort_order` is optional and defaults to the item's array position.
+- `PATCH /api/seller/listings/{listing_id}` for the seeded trading-card category should include:
+  ```json
+  {
+    "title": "1999 Charizard Holo PSA 8",
+    "description": "Clean slab, no cracks, centered well.",
+    "condition_code": "used_good",
+    "quantity_available": 1,
+    "price": {
+      "amount_minor": 125000,
+      "currency_code": "USD"
+    },
+    "attributes": [
+      {
+        "key": "grading_company",
+        "value": "psa"
+      },
+      {
+        "key": "grade",
+        "value": 8
+      }
+    ]
+  }
+  ```
+
+## Operational Notes
+
+- OpenClaw should not attempt Twitter/X OAuth directly in this issue slice.
+- `GET /api/categories` and `GET /api/categories/{slug}` are public and do not require seller auth.
+- `POST /api/seller/upload-sessions` only accepts image MIME types in this slice.
+- `POST /api/seller/listings/{listing_id}/media` requires `asset_key` values under `listings/drafts/{listing_id}/...` and verifies the uploaded object exists before attachment.
+- `POST /api/seller/listings/{listing_id}/publish` returns `422` with `code: "listing_validation_failed"` when the draft is incomplete.
+- `GET /api/listings/{listing_id}` only returns published listings.
 
 ## Repo Docs
 
-- [Product](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/product.md): Product scope and the current marketplace slice.
-- [Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md): Runtime boundaries, auth flow, and persistence shape.
-- [Development](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/development.md): Environment, auth, database, and local commands.
-- [Testing](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/testing.md): Verification expectations and current auth-flow coverage.
+- [Product](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/product.md): product scope and the current marketplace slice.
+- [Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md): runtime boundaries, auth flow, and persistence shape.
+- [Development](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/development.md): environment, auth, database, and local commands.
+- [Testing](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/testing.md): verification expectations and current coverage.
 
 ## Optional
 
-- [README](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/README.md): Repo entrypoint and quick-start commands.
-- [Web Design](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/apps/web/docs/design.md): Web visual system and UI composition guidance.
+- [README](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/README.md): repo entrypoint and quick-start commands.
+- [Web Design](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/apps/web/docs/design.md): web visual system and UI composition guidance.
