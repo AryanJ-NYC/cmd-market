@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { BlogSection } from "./_components/landing/blog-section";
+import { FinalCtaSection } from "./_components/landing/final-cta-section";
 import { Footer } from "./_components/landing/footer";
 import { HeroSection } from "./_components/landing/hero-section";
 import { SkillSection } from "./_components/landing/skill-section";
 
 export const metadata: Metadata = {
+  description: "Sell through OpenClaw with less manual listing work and cleaner marketplace inventory.",
   title: "CMD Market"
 };
 
@@ -20,6 +22,7 @@ export default function HomePage() {
       <HeroSection monoClassName={mono.className} />
       <SkillSection monoClassName={mono.className} />
       <BlogSection monoClassName={mono.className} />
+      <FinalCtaSection monoClassName={mono.className} />
       <Footer monoClassName={mono.className} />
     </main>
   );

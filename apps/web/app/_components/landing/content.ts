@@ -1,50 +1,73 @@
-import {
-  discoveryNotes,
-  publicRoutes,
-  sellerApiRoutes
-} from "../../../lib/discovery/content";
+import { publicRoutes, sellerApiRoutes } from "../../../lib/discovery/content";
 
 export const heroContent = {
-  eyebrow: "Public Surface",
-  headline: "One marketplace surface for humans and agents.",
-  note: "Public discovery stays open. Seller browser work starts under /seller. Seller API keys only operate on /api/seller/*.",
+  eyebrow: "OpenClaw Sellers",
+  headline: "Sell through OpenClaw without doing every listing step by hand.",
+  highlights: [
+    {
+      body: "Set up your workspace in the browser first, then decide exactly what is ready to go live.",
+      title: "Stay in control"
+    },
+    {
+      body: "Let your agent help with the repetitive draft, media, and publish steps that usually eat your time.",
+      title: "Offload the repetitive work"
+    },
+    {
+      body: "Create cleaner, structured listings that are easier for both people and agent-powered buyers to understand.",
+      title: "Give buyers better listings"
+    }
+  ],
+  note: "New here? Create your seller workspace in the browser first. Add an API key later when you want OpenClaw to help with listing work.",
   primaryCta: {
     href: "/seller",
-    label: "For sellers"
+    label: "Create seller workspace"
   },
-  routeLabels: ["/", "/seller", "/llms.txt", "/openapi.json"],
   secondaryCta: {
     href: "/llms.txt",
-    label: "For agents"
+    label: "Agent docs"
   },
   supportingCopy:
-    "Start seller setup in the browser, then hand draft authoring, media attachment, and publish workflows to an agent without splitting the marketplace into separate products."
+    "CMD Market helps OpenClaw sellers turn item photos into cleaner listings with less manual work, while keeping the final publish decision in human hands."
 } as const;
 
 export const agentQuickstartItems = [
   {
-    description: "Start with the human-readable route map before you guess at current scope or auth rules.",
+    description: "See what is public, what needs sign-in, and which routes are live right now.",
     href: publicRoutes[3].href,
-    label: "Read the route map",
-    note: "Best first stop for agent clients."
+    label: "Read the docs",
+    note: "The fastest starting point for a new integration."
   },
   {
-    description: "Load the machine-readable seller API description for the implemented routes in this slice.",
+    description: "Use the current API contract for seller setup, drafts, media, and publish flows.",
     href: publicRoutes[4].href,
-    label: "Load the OpenAPI spec",
-    note: "Current-state seller endpoints only."
+    label: "Use the API spec",
+    note: "Live routes only."
   },
   {
-    description: "Resolve seller workspace scope before draft or upload actions.",
+    description: "Check the active seller workspace before creating drafts, uploads, or publish requests.",
     href: sellerApiRoutes[0].href,
-    label: "Verify seller context",
-    note: "API keys authenticate seller API routes only."
+    label: "Check seller context first",
+    note: "Seller API keys work on `/api/seller/*` only."
   }
 ] as const;
 
 export const scopeContent = {
-  body: "The live surface today is seller bootstrap, seller-scoped OpenClaw authorization, category metadata reads, richer draft listing authoring, publish validation, and canonical public listing reads.",
+  body: "Most marketplaces still make sellers repeat the same tedious work. CMD Market starts from a simpler idea: let OpenClaw help with the repetitive parts while sellers stay in control.",
   eyebrow: "02",
-  headline: "OpenClaw is the first seller client.",
-  supportingNote: discoveryNotes[2]
+  headline: "OpenClaw is where we start.",
+  supportingNote: "The first seller workflow is built around OpenClaw."
+} as const;
+
+export const finalCtaContent = {
+  body: "Start in the browser, create your workspace, and connect OpenClaw when you are ready to hand off the repetitive listing work.",
+  eyebrow: "03",
+  headline: "Ready to start selling on CMD Market?",
+  primaryCta: {
+    href: "/seller",
+    label: "Create seller workspace"
+  },
+  secondaryLink: {
+    href: "/llms.txt",
+    label: "Building an integration instead? Start with the agent docs."
+  }
 } as const;

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { sellerEntryContent } from "./content";
 
 export const metadata: Metadata = {
-  description: "Public seller entry page for CMD Market browser setup and seller route intent.",
-  title: "Seller Entry"
+  description: "Start selling on CMD Market in the browser, then connect OpenClaw when you are ready.",
+  title: "Start Selling on CMD Market"
 };
 
 export default function SellerEntryPage() {
@@ -25,7 +25,7 @@ export default function SellerEntryPage() {
               className="inline-flex items-center justify-center bg-stone-100 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-white"
               href="/sign-in"
             >
-              Start in the browser
+              Create seller workspace
             </Link>
             <Link
               className="inline-flex items-center justify-center border border-white/10 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-white/5"
@@ -43,7 +43,7 @@ export default function SellerEntryPage() {
         <section className="space-y-6">
           <div className="space-y-2">
             <p className="font-mono text-sm text-cyan-400">01</p>
-            <h2 className="text-2xl font-medium tracking-tight text-stone-50">Browser-first seller flow</h2>
+            <h2 className="text-2xl font-medium tracking-tight text-stone-50">How seller setup works</h2>
           </div>
 
           <div className="border-y border-white/10">
@@ -67,7 +67,7 @@ export default function SellerEntryPage() {
         <section className="space-y-6">
           <div className="space-y-2">
             <p className="font-mono text-sm text-fuchsia-400">02</p>
-            <h2 className="text-2xl font-medium tracking-tight text-stone-50">What happens next</h2>
+            <h2 className="text-2xl font-medium tracking-tight text-stone-50">After your workspace is ready</h2>
           </div>
 
           <div className="space-y-6 border-t border-white/10 pt-6">

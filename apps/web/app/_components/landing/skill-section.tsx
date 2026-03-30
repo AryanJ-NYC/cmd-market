@@ -7,12 +7,12 @@ export function SkillSection({ monoClassName }: SkillSectionProps) {
       <div className="mx-auto max-w-5xl">
         <p className={`mb-3 text-sm text-orange-400 ${monoClassName}`}>01</p>
         <h2 className="text-2xl font-medium tracking-tight text-white md:text-3xl">
-          For agents
+          Integrating with CMD Market?
         </h2>
 
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-400">
-          CMD Market exposes a public route map, a machine-readable API description, and the
-          current public and seller endpoints without pretending the homepage is the whole app.
+          If you are integrating with CMD Market, these are the only links you need to get oriented
+          quickly.
         </p>
 
         <div className="mt-12 border-y border-white/10">
@@ -37,8 +37,7 @@ export function SkillSection({ monoClassName }: SkillSectionProps) {
         </div>
 
         <p className="mt-10 border-l-2 border-cyan-400 pl-4 text-sm leading-relaxed text-stone-300">
-          Browser seller setup still starts with sign-in and workspace selection. Agent traffic
-          should prefer `/api/seller/*` after the seller has created a workspace-scoped API key.
+          Here to sell, not build? Skip this section and start with seller setup instead.
         </p>
       </div>
     </section>

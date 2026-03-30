@@ -33,13 +33,14 @@ export function BlogSection({ monoClassName }: BlogSectionProps) {
               Proof
             </p>
             <p className="text-sm leading-6 text-stone-400">
-              Read how the first OpenClaw selling flow fits into the broader marketplace direction.
+              Want the backstory? Read how the first OpenClaw selling flow fits into the bigger CMD
+              Market direction.
             </p>
             <Link
               href="/blog/sell-stuff-with-openclaw"
               className={`inline-flex items-center gap-2 text-sm text-stone-100 transition-colors hover:text-rose-400 ${monoClassName}`}
             >
-              Read the first post
+              Read the backstory
               <ArrowUpRightIcon />
             </Link>
           </div>

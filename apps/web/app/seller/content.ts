@@ -1,31 +1,32 @@
 import { sellerBrowserRoutes, sellerFlowSteps } from "../../lib/discovery/content";
 
 export const sellerEntryContent = {
-  boundaryNote: "API keys do not sign you into browser seller pages.",
-  eyebrow: "Seller Entry",
+  boundaryNote:
+    "Start here in the browser. Once your workspace is ready, you can add an API key so OpenClaw can help with drafts and publishing.",
+  eyebrow: "Seller Setup",
   intro:
-    "Start in the browser to create or activate the seller workspace, then create the OpenClaw API key inside settings when you are ready to hand draft creation, category-aware patching, media attachment, and publish work to an agent.",
+    "Create your seller workspace in the browser, then connect OpenClaw when you are ready to speed up the repetitive listing work.",
   links: [
     {
-      description: "Start seller authentication through Twitter/X.",
+      description: "Sign in with X to begin your seller setup.",
       href: "/sign-in",
       title: "Sign in"
     },
     {
-      description: sellerBrowserRoutes[0].description,
+      description: "Create or choose the workspace that will own your CMD Market listings.",
       href: sellerBrowserRoutes[0].href,
       title: "Seller workspace"
     },
     {
-      description: sellerBrowserRoutes[1].description,
+      description: "Create your OpenClaw API key and review your seller status.",
       href: sellerBrowserRoutes[1].href,
       title: "Seller settings"
     }
   ],
   secondaryLink: {
     href: "/llms.txt",
-    label: "Agent route map"
+    label: "Agent docs"
   },
   steps: sellerFlowSteps,
-  title: "Sell on CMD Market"
+  title: "Start selling on CMD Market"
 } as const;

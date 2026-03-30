@@ -45,29 +45,28 @@ export function HeroSection({ monoClassName }: HeroSectionProps) {
         <div className="border-t border-white/10 pt-6 lg:col-span-2 lg:border-l lg:border-t-0 lg:pl-8">
           <div className={`space-y-6 ${monoClassName}`}>
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-stone-600">Current entrypoints</p>
-              <div className="mt-3 flex flex-wrap gap-3 text-sm text-stone-300">
-                {heroContent.routeLabels.map((label) => (
-                  <span className="border border-white/10 px-3 py-1" key={label}>
-                    {label}
-                  </span>
+              <p className="text-xs uppercase tracking-[0.24em] text-stone-600">Why this feels easier</p>
+              <div className="mt-4 space-y-4">
+                {heroContent.highlights.map((item) => (
+                  <div className="border border-white/10 p-4" key={item.title}>
+                    <p className="text-sm text-stone-100">{item.title}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-stone-400">{item.body}</p>
+                  </div>
                 ))}
               </div>
             </div>
 
             <div className="space-y-3 border-t border-white/10 pt-6 text-sm text-stone-400">
               <p>
-                <span className="mr-3 text-cyan-400">1.</span>
-                Public discovery starts on the homepage, <Link href="/llms.txt" className="text-stone-100 hover:text-cyan-300">/llms.txt</Link>, and{" "}
-                <Link href="/openapi.json" className="text-stone-100 hover:text-cyan-300">/openapi.json</Link>.
-              </p>
-              <p>
-                <span className="mr-3 text-cyan-400">2.</span>
-                Browser seller setup starts at <Link href="/seller" className="text-stone-100 hover:text-cyan-300">/seller</Link> and continues through sign-in.
-              </p>
-              <p>
-                <span className="mr-3 text-cyan-400">3.</span>
-                Seller API keys stay on <span className="text-stone-100">/api/seller/*</span>, not browser UI routes.
+                Building an agent? You only need{" "}
+                <Link href="/llms.txt" className="text-stone-100 hover:text-cyan-300">
+                  llms.txt
+                </Link>{" "}
+                plus{" "}
+                <Link href="/openapi.json" className="text-stone-100 hover:text-cyan-300">
+                  openapi.json
+                </Link>
+                .
               </p>
             </div>
           </div>

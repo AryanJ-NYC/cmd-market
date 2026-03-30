@@ -9,20 +9,20 @@ export function Footer({ monoClassName }: FooterProps) {
             <span className="text-cyan-400">$</span> cmd.market
           </p>
           <p className="text-sm text-stone-400">
-            Public discovery, category metadata, and published listing reads stay open. Seller
-            browser flows live under /seller. Seller API keys stay on /api/seller/*.
+            Start with seller setup in the browser. When you are ready, connect OpenClaw to take
+            the repetitive listing work off your plate.
           </p>
         </div>
 
         <div className={`flex flex-wrap gap-4 text-xs text-stone-500 ${monoClassName}`}>
           <Link className="hover:text-stone-100" href="/seller">
-            /seller
+            Seller setup
           </Link>
           <Link className="hover:text-stone-100" href="/llms.txt">
-            /llms.txt
+            Agent docs
           </Link>
           <Link className="hover:text-stone-100" href="/openapi.json">
-            /openapi.json
+            API spec
           </Link>
         </div>
       </div>

@@ -1,8 +1,8 @@
 export const discoverySummary =
-  "CMD Market is a Scarce City marketplace for physical goods where humans and agents share one marketplace surface.";
+  "CMD Market is a Scarce City marketplace for physical goods, built for buying and selling with agents.";
 
 export const discoveryNotes = [
-  "Use the public site to understand route intent, current scope, and seller entry points.",
+  "Use the public site to see how seller setup works and what is live today.",
   "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
@@ -11,12 +11,12 @@ export const discoveryNotes = [
 
 export const publicRoutes = [
   {
-    description: "Brand-led public entrypoint for marketplace positioning and route intent.",
+    description: "Public homepage for CMD Market and the main seller entry points.",
     href: "/",
     title: "Homepage"
   },
   {
-    description: "Public seller overview that explains the browser flow and auth boundary.",
+    description: "Public seller setup overview for the browser-first flow.",
     href: "/seller",
     title: "Seller Entry"
   },
@@ -26,7 +26,7 @@ export const publicRoutes = [
     title: "Sign In"
   },
   {
-    description: "Agent-readable route map and operating notes for the current CMD Market slice.",
+    description: "Agent-readable guide to the current CMD Market routes and operating notes.",
     href: "/llms.txt",
     title: "llms.txt"
   },
@@ -39,12 +39,12 @@ export const publicRoutes = [
 
 export const sellerBrowserRoutes = [
   {
-    description: "Create or select the active seller workspace after browser sign-in.",
+    description: "Create or choose the seller workspace you want to sell from after browser sign-in.",
     href: "/seller/workspace",
     title: "Seller Workspace"
   },
   {
-    description: "Review seller eligibility and create the OpenClaw seller API key for the active workspace.",
+    description: "Review seller status and create the OpenClaw API key for the active workspace.",
     href: "/seller/settings",
     title: "Seller Settings"
   }
@@ -113,16 +113,16 @@ export const publicApiRoutes = [
 
 export const sellerFlowSteps = [
   {
-    body: "Start at the public seller entry page, then sign in with Twitter/X in the browser.",
-    label: "Open the seller flow"
+    body: "Sign in and choose the workspace that will own your CMD Market listings.",
+    label: "Set up your seller workspace"
   },
   {
-    body: "Create or activate the seller workspace that will own browser actions and API keys.",
-    label: "Choose the active workspace"
+    body: "Create an OpenClaw API key in settings when you want an agent to help with drafts, media, and publishing.",
+    label: "Connect OpenClaw"
   },
   {
-    body: "Create the OpenClaw seller API key in settings. The plaintext key is shown once and then used only on `/api/seller/*` routes for draft authoring, media, and publish actions.",
-    label: "Authorize the seller agent"
+    body: "Once setup is done, your agent can help with the repetitive parts while you stay in control of what gets published.",
+    label: "Start listing faster"
   }
 ] as const;
 
