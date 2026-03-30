@@ -5,6 +5,8 @@ import { getRuntimeDatabaseUrl } from "./db/urls";
 const runtimeEnv = {
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   DEV_SELLER_OVERRIDE_EMAILS: process.env.DEV_SELLER_OVERRIDE_EMAILS,
+  DO_SPACES_ACCESS_KEY_ID: process.env.DO_SPACES_ACCESS_KEY_ID,
+  DO_SPACES_SECRET_ACCESS_KEY: process.env.DO_SPACES_SECRET_ACCESS_KEY,
   NEON_DATABASE_URL: process.env.NEON_DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
   X_CLIENT_ID: process.env.X_CLIENT_ID,
@@ -17,6 +19,8 @@ const validatedEnv = createEnv({
   server: {
     BETTER_AUTH_SECRET: z.string().min(1),
     DEV_SELLER_OVERRIDE_EMAILS: z.string().default(""),
+    DO_SPACES_ACCESS_KEY_ID: z.string().min(1),
+    DO_SPACES_SECRET_ACCESS_KEY: z.string().min(1),
     NEON_DATABASE_URL: z.string().url(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     X_CLIENT_ID: z.string().min(1),
@@ -28,6 +32,8 @@ export const env = {
   allowDevelopmentOverrides: validatedEnv.NODE_ENV !== "production",
   betterAuthSecret: validatedEnv.BETTER_AUTH_SECRET,
   databaseUrl: getRuntimeDatabaseUrl(validatedEnv),
+  doSpacesAccessKeyId: validatedEnv.DO_SPACES_ACCESS_KEY_ID,
+  doSpacesSecretAccessKey: validatedEnv.DO_SPACES_SECRET_ACCESS_KEY,
   nodeEnv: validatedEnv.NODE_ENV,
   xClientId: validatedEnv.X_CLIENT_ID ?? null,
   xClientSecret: validatedEnv.X_CLIENT_SECRET ?? null,

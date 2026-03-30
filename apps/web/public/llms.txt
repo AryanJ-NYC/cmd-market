@@ -2,7 +2,7 @@
 
 > CMD Market is a Scarce City marketplace where sellers bootstrap identity in the web app and agents such as OpenClaw act through seller-workspace API keys.
 
-CMD Market currently exposes the first seller-auth slice, not the full listing lifecycle. Use the web app for human bootstrap, then prefer seller APIs over UI scraping once an API key exists.
+CMD Market currently exposes seller bootstrap plus the first thin draft-listing and media-upload slice. Use the web app for human bootstrap, then prefer seller APIs over UI scraping once an API key exists.
 
 OpenClaw guidance:
 
@@ -12,14 +12,69 @@ OpenClaw guidance:
 4. Store that key securely and send it on every seller API request as the `x-api-key` header.
 5. Verify seller scope with [Seller Context API](/api/seller/context).
 6. Check seller eligibility with [Seller Publishability API](/api/seller/publishability).
+7. Create a blank draft listing with [Create Draft Listing API](/api/seller/listings).
+8. Request draft-scoped upload sessions with [Create Upload Sessions API](/api/seller/upload-sessions). This request requires:
+   - `listing_id`
+   - `files[].filename`
+   - `files[].content_type`
+   - `files[].size_bytes`
+9. Upload image bytes directly to the returned presigned `PUT` URL.
+10. Attach uploaded assets to the draft with `POST /api/seller/listings/{listing_id}/media`. The minimal accepted body is:
+    ```json
+    {
+      "media": [
+        {
+          "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
+        }
+      ]
+    }
+    ```
+    `alt_text` is optional. `sort_order` is optional and defaults to the item's array position.
 
 Operational notes:
 
 - OpenClaw should not attempt Twitter/X OAuth directly in this issue slice. The human completes browser sign-in and workspace setup first.
 - `GET /api/seller/context` accepts either a browser session or `x-api-key` and returns the resolved seller workspace plus actor metadata.
 - `GET /api/seller/publishability` returns `200` when the resolved seller workspace is publishable and `403` when the seller exists but is not yet eligible.
+- `POST /api/seller/listings` creates a thin seller-owned draft listing and returns an empty `media` array.
+- `POST /api/seller/upload-sessions` only authenticates seller API routes. It does not authenticate browser `/seller/*` UI.
+- `POST /api/seller/upload-sessions` requires a seller-owned draft `listing_id` and only accepts image MIME types in this slice.
+- `POST /api/seller/listings/:listingId/media` requires `asset_key` values under `listings/drafts/{listing_id}/...`.
+- `POST /api/seller/listings/:listingId/media` also verifies the uploaded object exists in Spaces before it is attached.
 - A `409 organization_context_required` response means a human session exists but no active seller workspace is selected.
 - A `429 RATE_LIMITED` response includes `retryAfterMs` in the JSON error body and `Retry-After` in the response headers.
+
+Agent request sequence:
+
+1. `POST /api/seller/listings` with `x-api-key` and `{}`.
+2. Read the returned draft `id`.
+3. `POST /api/seller/upload-sessions` with `x-api-key` and:
+   ```json
+   {
+     "listing_id": "lst_123",
+     "files": [
+       {
+         "filename": "front.jpg",
+         "content_type": "image/jpeg",
+         "size_bytes": 2488331
+       }
+     ]
+   }
+   ```
+4. Upload bytes directly to the returned presigned `PUT` URL using the returned `content-type` header.
+5. `POST /api/seller/listings/{listing_id}/media` with `x-api-key` and:
+   ```json
+   {
+     "media": [
+       {
+         "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
+       }
+     ]
+   }
+   ```
+   Optional fields per item:
+   - `alt_text`
+   - `sort_order`
 
 ## Human Bootstrap
 
@@ -31,15 +86,18 @@ Operational notes:
 
 - [Seller Context API](/api/seller/context): Resolve seller scope for the current browser session or `x-api-key`.
 - [Seller Publishability API](/api/seller/publishability): Check whether the resolved seller workspace is eligible to publish.
+- [Create Draft Listing API](/api/seller/listings): Create a blank seller-owned draft listing.
+- [Create Upload Sessions API](/api/seller/upload-sessions): Mint presigned direct-upload sessions for a seller-owned draft listing.
+- `POST /api/seller/listings/{listing_id}/media`: Attach uploaded assets to a seller-owned draft listing.
 
 ## Repo Docs
 
-- [Product](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/product.md): Product scope and the current marketplace slice.
-- [Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/ARCHITECTURE.md): Runtime boundaries, auth flow, and persistence shape.
-- [Development](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/development.md): Environment, auth, database, and local commands.
-- [Testing](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/docs/testing.md): Verification expectations and current auth-flow coverage.
+- [Product](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/product.md): Product scope and the current marketplace slice.
+- [Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md): Runtime boundaries, auth flow, and persistence shape.
+- [Development](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/development.md): Environment, auth, database, and local commands.
+- [Testing](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/docs/testing.md): Verification expectations and current auth-flow coverage.
 
 ## Optional
 
-- [README](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/README.md): Repo entrypoint and quick-start commands.
-- [Web Design](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/main/apps/web/docs/design.md): Web visual system and UI composition guidance.
+- [README](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/README.md): Repo entrypoint and quick-start commands.
+- [Web Design](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/apps/web/docs/design.md): Web visual system and UI composition guidance.

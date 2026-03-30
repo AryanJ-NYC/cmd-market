@@ -2,7 +2,7 @@
 
 ## Overview
 
-CMD Market is a Turborepo with one Next.js app that now carries the first marketplace backend slice inside the web runtime. The repo is still intentionally small, but it now includes seller workspace auth, a local PostgreSQL database, and Prisma-managed persistence alongside the frontend.
+CMD Market is a Turborepo with one Next.js app that now carries the first marketplace backend slices inside the web runtime. The repo is still intentionally small, but it now includes seller workspace auth, local PostgreSQL, Prisma-managed persistence, and the first draft-listing plus direct-upload media flow alongside the frontend.
 
 ## Repo Shape
 
@@ -26,9 +26,12 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
   - Twitter/X sign-in
   - organization workspaces
   - organization-owned API keys for OpenClaw
-- Seller-specific data currently lives in two custom tables:
+- Seller-specific data currently lives in four custom tables:
   - `seller_account`
   - `audit_event`
+  - `listing`
+  - `listing_media`
+- DigitalOcean Spaces is used for direct image uploads through presigned `PUT` URLs. Only Spaces credentials are env-driven right now; region, bucket, and public asset host are still hard-coded placeholders in `apps/web/lib/storage/spaces.ts`.
 
 ## Seller Flow
 
@@ -40,6 +43,17 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 - The first seller APIs are:
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
+  - `POST /api/seller/listings`
+  - `POST /api/seller/upload-sessions`
+  - `POST /api/seller/listings/:listingId/media`
+
+## Draft Listing And Media Flow
+
+- Issue `#2` introduces a thin draft listing foundation so later listing-edit and publish work can build on a real persisted resource.
+- Sellers create a blank draft first through `POST /api/seller/listings`.
+- Upload sessions are draft-scoped, not global. `POST /api/seller/upload-sessions` requires a seller-owned `listing_id`, validates the draft is still in `draft` status, and returns direct-to-Spaces `PUT` instructions.
+- Asset keys now live under `listings/drafts/{listing_id}/...` so attachment can enforce draft ownership without a separate asset table in this slice.
+- `POST /api/seller/listings/:listingId/media` persists attached media rows in `listing_media`, derives stable public URLs from the configured Spaces asset host, and writes audit events for media attachment.
 
 ## Key Flows
 
@@ -47,7 +61,7 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 - `pnpm db:start` starts the repo-managed PostgreSQL container.
 - `pnpm db:migrate` applies Prisma migrations and regenerates the Prisma client for `apps/web`.
 - The web app imports its global stylesheet from the shared Tailwind package.
-- Seller workspace pages, seller APIs, and BetterAuth routes now run end-to-end against PostgreSQL.
+- Seller workspace pages, seller APIs, BetterAuth routes, and the direct-upload draft media flow now run end-to-end against PostgreSQL plus DigitalOcean Spaces.
 
 ## Constraints
 
