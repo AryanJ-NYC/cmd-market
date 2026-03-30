@@ -1,3 +1,4 @@
+import "zod-openapi";
 import { z } from "zod";
 import { createMarketplaceId } from "../db/ids";
 import { resolveSellerRequestContext } from "../seller/service";
@@ -230,28 +231,55 @@ export async function attachDraftListingMedia(
 }
 
 export const uploadSessionsSchema = z.object({
-  listing_id: z.string().min(1),
+  listing_id: z.string().min(1).meta({
+    description: "Seller-owned draft listing identifier.",
+    example: "lst_123"
+  }),
   files: z
     .array(
       z.object({
-        content_type: z.string().min(1),
-        filename: z.string().min(1),
-        size_bytes: z.number().int().positive()
+        content_type: z.string().min(1).meta({
+          description: "MIME type for the asset upload.",
+          example: "image/jpeg"
+        }),
+        filename: z.string().min(1).meta({
+          description: "Original filename for the uploaded asset.",
+          example: "front.jpg"
+        }),
+        size_bytes: z.number().int().positive().meta({
+          description: "File size in bytes.",
+          example: 2488331
+        })
       })
     )
     .min(1)
+}).meta({
+  description: "Draft-scoped upload session request payload.",
+  id: "UploadSessionsRequest"
 });
 
 export const attachListingMediaSchema = z.object({
   media: z
     .array(
       z.object({
-        alt_text: z.string().trim().min(1).nullable().optional(),
-        asset_key: z.string().min(1),
-        sort_order: z.number().int().nonnegative().optional()
+        alt_text: z.string().trim().min(1).nullable().optional().meta({
+          description: "Optional alt text for the uploaded media.",
+          example: "Front of the card"
+        }),
+        asset_key: z.string().min(1).meta({
+          description: "Stable storage key returned by the upload session step.",
+          example: "listings/drafts/lst_123/asset_123-front.jpg"
+        }),
+        sort_order: z.number().int().nonnegative().optional().meta({
+          description: "Optional display order for the media item.",
+          example: 0
+        })
       })
     )
     .min(1)
+}).meta({
+  description: "Draft listing media attachment payload.",
+  id: "AttachListingMediaRequest"
 });
 
 export function parseUploadSessionsInput(input: z.infer<typeof uploadSessionsSchema>): UploadSessionsInput {

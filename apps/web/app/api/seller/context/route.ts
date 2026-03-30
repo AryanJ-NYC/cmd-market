@@ -1,31 +1,14 @@
 import { NextResponse } from "next/server";
+import { createSellerApiErrorResponse } from "../../../../lib/seller/api";
 import { resolveSellerRequestContext } from "../../../../lib/seller/service";
+import { serializeSellerContextResponse } from "../../../../lib/seller/http";
 
 export async function GET(request: Request) {
   const context = await resolveSellerRequestContext(request);
 
   if (!context.ok) {
-    return NextResponse.json(
-      {
-        error: {
-          code: context.code,
-          message: context.message,
-          retryAfterMs: context.retryAfterMs ?? null
-        }
-      },
-      {
-        headers:
-          typeof context.retryAfterMs === "number"
-            ? {
-                "Retry-After": String(Math.ceil(context.retryAfterMs / 1000))
-              }
-            : undefined,
-        status: context.status
-      }
-    );
+    return createSellerApiErrorResponse(context);
   }
 
-  return NextResponse.json({
-    data: context.context
-  });
+  return NextResponse.json(serializeSellerContextResponse(context.context));
 }

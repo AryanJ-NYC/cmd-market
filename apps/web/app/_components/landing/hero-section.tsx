@@ -1,43 +1,75 @@
 import Link from "next/link";
+import { heroContent } from "./content";
 
 export function HeroSection({ monoClassName }: HeroSectionProps) {
   return (
-    <section className="relative px-6 py-24 md:py-32 lg:py-40">
-      <div className="mx-auto max-w-3xl">
-        <p className={`mb-6 text-sm text-stone-500 ${monoClassName}`}>
-          <span className="text-rose-400">$</span> cmd.market
-        </p>
+    <section className="relative overflow-hidden border-b border-white/10 px-6 py-20 md:py-28 lg:py-32">
+      <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-5 lg:items-end">
+        <div className="max-w-3xl lg:col-span-3">
+          <p className={`mb-6 text-sm text-stone-500 ${monoClassName}`}>
+            <span className="text-rose-400">$</span> cmd.market
+          </p>
 
-        <h1 className="text-balance text-4xl font-medium tracking-tight text-white md:text-5xl lg:text-6xl">
-          A marketplace for agents and the people using them.
-        </h1>
+          <p className={`mb-4 text-sm text-orange-400 ${monoClassName}`}>{heroContent.eyebrow}</p>
 
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-stone-400">
-          List physical goods through OpenClaw. Publish cleaner, structured inventory. Let buyers
-          discover it on the web or through their own agents.
-        </p>
+          <h1 className="max-w-3xl text-balance text-4xl font-medium tracking-tight text-white md:text-5xl lg:text-6xl">
+            {heroContent.headline}
+          </h1>
 
-        <p className="mt-8 border-l-2 border-cyan-400 pl-4 text-sm leading-relaxed text-stone-300">
-          We&apos;re building the marketplace where AI agents can buy and sell alongside humans,
-          not as an afterthought.
-        </p>
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-stone-400">
+            {heroContent.supportingCopy}
+          </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Link
-            href="https://clawhub.ai/AryanJ-NYC/cross-listing-ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 bg-stone-100 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-white"
-          >
-            Install the skill
-            <ArrowRightIcon />
-          </Link>
-          <Link
-            href="/blog/sell-stuff-with-openclaw"
-            className="inline-flex items-center justify-center gap-2 border border-white/10 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-white/5"
-          >
-            Read the first post
-          </Link>
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Link
+              href={heroContent.primaryCta.href}
+              className="inline-flex items-center justify-center gap-2 bg-stone-100 px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-white"
+            >
+              {heroContent.primaryCta.label}
+              <ArrowRightIcon />
+            </Link>
+            <Link
+              href={heroContent.secondaryCta.href}
+              className="inline-flex items-center justify-center gap-2 border border-white/10 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-white/5"
+            >
+              {heroContent.secondaryCta.label}
+            </Link>
+          </div>
+
+          <p className="mt-8 max-w-2xl border-l-2 border-cyan-400 pl-4 text-sm leading-relaxed text-stone-300">
+            {heroContent.note}
+          </p>
+        </div>
+
+        <div className="border-t border-white/10 pt-6 lg:col-span-2 lg:border-l lg:border-t-0 lg:pl-8">
+          <div className={`space-y-6 ${monoClassName}`}>
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-stone-600">Current entrypoints</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-sm text-stone-300">
+                {heroContent.routeLabels.map((label) => (
+                  <span className="border border-white/10 px-3 py-1" key={label}>
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 border-t border-white/10 pt-6 text-sm text-stone-400">
+              <p>
+                <span className="mr-3 text-cyan-400">1.</span>
+                Public discovery starts on the homepage, <Link href="/llms.txt" className="text-stone-100 hover:text-cyan-300">/llms.txt</Link>, and{" "}
+                <Link href="/openapi.json" className="text-stone-100 hover:text-cyan-300">/openapi.json</Link>.
+              </p>
+              <p>
+                <span className="mr-3 text-cyan-400">2.</span>
+                Browser seller setup starts at <Link href="/seller" className="text-stone-100 hover:text-cyan-300">/seller</Link> and continues through sign-in.
+              </p>
+              <p>
+                <span className="mr-3 text-cyan-400">3.</span>
+                Seller API keys stay on <span className="text-stone-100">/api/seller/*</span>, not browser UI routes.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
