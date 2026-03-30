@@ -19,7 +19,17 @@ OpenClaw guidance:
    - `files[].content_type`
    - `files[].size_bytes`
 9. Upload image bytes directly to the returned presigned `PUT` URL.
-10. Attach uploaded assets to the draft with `POST /api/seller/listings/{listing_id}/media`.
+10. Attach uploaded assets to the draft with `POST /api/seller/listings/{listing_id}/media`. The minimal accepted body is:
+    ```json
+    {
+      "media": [
+        {
+          "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
+        }
+      ]
+    }
+    ```
+    `alt_text` is optional. `sort_order` is optional and defaults to the item's array position.
 
 Operational notes:
 
@@ -57,13 +67,14 @@ Agent request sequence:
    {
      "media": [
        {
-         "asset_key": "listings/drafts/lst_123/asset_123-front.jpg",
-         "alt_text": "Front photo",
-         "sort_order": 0
+         "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
        }
      ]
    }
    ```
+   Optional fields per item:
+   - `alt_text`
+   - `sort_order`
 
 ## Human Bootstrap
 

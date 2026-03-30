@@ -248,7 +248,7 @@ export const attachListingMediaSchema = z.object({
       z.object({
         alt_text: z.string().trim().min(1).nullable().optional(),
         asset_key: z.string().min(1),
-        sort_order: z.number().int().nonnegative()
+        sort_order: z.number().int().nonnegative().optional()
       })
     )
     .min(1)
@@ -269,10 +269,10 @@ export function parseAttachListingMediaInput(
   input: z.infer<typeof attachListingMediaSchema>
 ): AttachListingMediaInput {
   return {
-    media: input.media.map((item) => ({
+    media: input.media.map((item, index) => ({
       altText: item.alt_text ?? null,
       assetKey: item.asset_key,
-      sortOrder: item.sort_order
+      sortOrder: item.sort_order ?? index
     }))
   };
 }

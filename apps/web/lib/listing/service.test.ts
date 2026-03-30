@@ -56,9 +56,11 @@ vi.mock("../storage/spaces", () => ({
 }));
 
 import {
+  attachListingMediaSchema,
   attachDraftListingMedia,
   createDraftListing,
-  createListingUploadSessions
+  createListingUploadSessions,
+  parseAttachListingMediaInput
 } from "./service";
 
 describe("listing service", () => {
@@ -281,6 +283,35 @@ describe("listing service", () => {
       message: "Authenticated seller cannot create upload sessions for that draft listing.",
       ok: false,
       status: 403
+    });
+  });
+
+  it("accepts minimal media attachment payloads and defaults sort order by array position", () => {
+    const parsed = attachListingMediaSchema.parse({
+      media: [
+        {
+          asset_key: "listings/drafts/lst_123/asset_123-front.jpg"
+        },
+        {
+          alt_text: "Back photo",
+          asset_key: "listings/drafts/lst_123/asset_456-back.jpg"
+        }
+      ]
+    });
+
+    expect(parseAttachListingMediaInput(parsed)).toEqual({
+      media: [
+        {
+          altText: null,
+          assetKey: "listings/drafts/lst_123/asset_123-front.jpg",
+          sortOrder: 0
+        },
+        {
+          altText: "Back photo",
+          assetKey: "listings/drafts/lst_123/asset_456-back.jpg",
+          sortOrder: 1
+        }
+      ]
     });
   });
 

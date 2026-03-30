@@ -112,13 +112,12 @@
      -d '{
        "media": [
          {
-           "asset_key": "listings/drafts/lst_123/asset_123-front.jpg",
-           "alt_text": "Front photo",
-           "sort_order": 0
+           "asset_key": "listings/drafts/lst_123/asset_123-front.jpg"
          }
        ]
      }'
    ```
+   `alt_text` is optional, and `sort_order` is optional. If you omit `sort_order`, CMD Market defaults it from the media array order.
 
 ## Current Conventions
 
