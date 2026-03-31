@@ -1328,7 +1328,57 @@ describe("seller service", () => {
     });
   });
 
-  it("requires an active seller workspace before rejecting the OpenClaw browser handoff", async () => {
+  it("rejects the OpenClaw browser handoff during first-run workspace creation", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([]);
+    openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.markRejected.mockResolvedValue({
+      applied: true,
+      session: createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        rejectedAt: new Date("2026-03-31T03:12:00.000Z"),
+        status: "rejected"
+      })
+    });
+
+    const result = await sellerService.rejectOpenClawAuthorizationSession(new Headers(), "browser_token");
+
+    expect(openClawAuthorizationSessionRepository.createAuditEvent).toHaveBeenCalledWith({
+      action: "openclaw_authorization.rejected",
+      actorApiKeyId: null,
+      actorType: "user",
+      actorUserId: "user_123",
+      createdAt: expect.any(Date),
+      entityId: "auth_123",
+      entityTable: "openclaw_authorization_session",
+      id: "seller_123",
+      metadata: {
+        sessionStatus: "rejected"
+      },
+      note: "OpenClaw workspace access was rejected.",
+      sellerAccountId: null
+    });
+    expect(result).toEqual({
+      data: {
+        sessionId: "auth_123",
+        status: "rejected"
+      },
+      ok: true
+    });
+  });
+
+  it("requires authentication before rejecting the OpenClaw browser handoff", async () => {
     authApi.getSession.mockResolvedValue(null);
     openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
@@ -1341,8 +1391,8 @@ describe("seller service", () => {
     await expect(
       sellerService.rejectOpenClawAuthorizationSession(new Headers(), "browser_token")
     ).rejects.toMatchObject({
-      code: "organization_context_required",
-      message: "Choose a seller workspace before rejecting OpenClaw."
+      code: "unauthorized",
+      message: "Authentication is required."
     });
 
     expect(openClawAuthorizationSessionRepository.markRejected).not.toHaveBeenCalled();
@@ -1406,6 +1456,56 @@ describe("seller service", () => {
       },
       note: "OpenClaw authorization session was cancelled.",
       sellerAccountId: "seller_123"
+    });
+    expect(result).toEqual({
+      data: {
+        sessionId: "auth_123",
+        status: "cancelled"
+      },
+      ok: true
+    });
+  });
+
+  it("cancels the OpenClaw browser handoff during first-run workspace creation", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([]);
+    openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.markCancelled.mockResolvedValue({
+      applied: true,
+      session: createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        cancelledAt: new Date("2026-03-31T03:12:00.000Z"),
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        status: "cancelled"
+      })
+    });
+
+    const result = await sellerService.cancelOpenClawAuthorizationSession(new Headers(), "browser_token");
+
+    expect(openClawAuthorizationSessionRepository.createAuditEvent).toHaveBeenCalledWith({
+      action: "openclaw_authorization.cancelled",
+      actorApiKeyId: null,
+      actorType: "user",
+      actorUserId: "user_123",
+      createdAt: expect.any(Date),
+      entityId: "auth_123",
+      entityTable: "openclaw_authorization_session",
+      id: "seller_123",
+      metadata: {
+        sessionStatus: "cancelled"
+      },
+      note: "OpenClaw authorization session was cancelled.",
+      sellerAccountId: null
     });
     expect(result).toEqual({
       data: {

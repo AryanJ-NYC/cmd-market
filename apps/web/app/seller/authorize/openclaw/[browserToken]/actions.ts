@@ -38,7 +38,7 @@ export async function cancelOpenClawAuthorizationAction(formData: FormData) {
 export async function createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData: FormData) {
   const browserToken = String(formData.get("browserToken") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
 
   if (!name || !slug) {
     redirectToWorkspaceCreationError({

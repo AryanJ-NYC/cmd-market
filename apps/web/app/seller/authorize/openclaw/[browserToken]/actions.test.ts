@@ -198,9 +198,43 @@ describe("openclaw authorization actions", () => {
     const { createWorkspaceAndAuthorizeOpenClawAuthorizationAction } = await import("./actions");
 
     await expect(createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
-      "redirect:/seller/authorize/openclaw/browser_token?error=Workspace+slug+must+use+lowercase+letters%2C+numbers%2C+and+hyphens.&name=OpenClaw+Seller+Studio&slug=Bad+Slug"
+      "redirect:/seller/authorize/openclaw/browser_token?error=Workspace+slug+must+use+lowercase+letters%2C+numbers%2C+and+hyphens.&name=OpenClaw+Seller+Studio&slug=bad+slug"
     );
     expect(createWorkspaceAndAuthorizeOpenClawAuthorizationSession).not.toHaveBeenCalled();
+  });
+
+  it("normalizes uppercase workspace slugs before handoff creation", async () => {
+    createWorkspaceAndAuthorizeOpenClawAuthorizationSession.mockResolvedValue({
+      data: {
+        sessionId: "auth_123",
+        status: "authorized",
+        workspace: {
+          id: "org_123",
+          name: "OpenClaw Seller Studio",
+          slug: "openclaw-seller-studio"
+        }
+      },
+      ok: true
+    });
+
+    const formData = new FormData();
+    formData.set("browserToken", "browser_token");
+    formData.set("name", "OpenClaw Seller Studio");
+    formData.set("slug", "OpenClaw-Seller-Studio");
+
+    const { createWorkspaceAndAuthorizeOpenClawAuthorizationAction } = await import("./actions");
+
+    await expect(createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
+      "redirect:/seller/authorize/openclaw/browser_token"
+    );
+    expect(createWorkspaceAndAuthorizeOpenClawAuthorizationSession).toHaveBeenCalledWith(
+      expect.any(Headers),
+      "browser_token",
+      {
+        name: "OpenClaw Seller Studio",
+        slug: "openclaw-seller-studio"
+      }
+    );
   });
 
   it("preserves edited workspace values when handoff creation fails", async () => {

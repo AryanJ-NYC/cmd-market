@@ -317,7 +317,7 @@ export async function rejectOpenClawAuthorizationSession(headers: HeadersLike, b
   }
 
   assertOpenClawAuthorizationPending(pageContext.session);
-  const workspaceData = requireOpenClawAuthorizationWorkspace(pageContext, "rejecting");
+  const actor = requireOpenClawAuthorizationActor(pageContext);
 
   const rejectedAt = new Date();
   const rejectedSession = await openClawAuthorizationSessionRepository.markRejected({
@@ -345,17 +345,17 @@ export async function rejectOpenClawAuthorizationSession(headers: HeadersLike, b
     action: "openclaw_authorization.rejected",
     actorApiKeyId: null,
     actorType: "user",
-    actorUserId: workspaceData.session.id,
+    actorUserId: actor.session.id,
     createdAt: rejectedAt,
     entityId: rejectedSession.session.id,
     entityTable: "openclaw_authorization_session",
     id: createMarketplaceId(),
-    metadata: {
-      organizationId: workspaceData.activeOrganization.id,
-      sessionStatus: rejectedSession.session.status
-    },
+    metadata: createOpenClawAuthorizationAuditMetadata({
+      organizationId: actor.activeOrganization?.id ?? null,
+      sessionStatus: "rejected"
+    }),
     note: "OpenClaw workspace access was rejected.",
-    sellerAccountId: workspaceData.activeSellerAccount.id
+    sellerAccountId: actor.activeSellerAccount?.id ?? null
   });
 
   return {
@@ -375,7 +375,7 @@ export async function cancelOpenClawAuthorizationSession(headers: HeadersLike, b
   }
 
   assertOpenClawAuthorizationPending(pageContext.session);
-  const workspaceData = requireOpenClawAuthorizationWorkspace(pageContext, "cancelling");
+  const actor = requireOpenClawAuthorizationActor(pageContext);
 
   const cancelledAt = new Date();
 
@@ -404,17 +404,17 @@ export async function cancelOpenClawAuthorizationSession(headers: HeadersLike, b
     action: "openclaw_authorization.cancelled",
     actorApiKeyId: null,
     actorType: "user",
-    actorUserId: workspaceData.session.id,
+    actorUserId: actor.session.id,
     createdAt: cancelledAt,
     entityId: cancelledSession.session.id,
     entityTable: "openclaw_authorization_session",
     id: createMarketplaceId(),
-    metadata: {
-      organizationId: workspaceData.activeOrganization.id,
-      sessionStatus: cancelledSession.session.status
-    },
+    metadata: createOpenClawAuthorizationAuditMetadata({
+      organizationId: actor.activeOrganization?.id ?? null,
+      sessionStatus: "cancelled"
+    }),
     note: "OpenClaw authorization session was cancelled.",
-    sellerAccountId: workspaceData.activeSellerAccount.id
+    sellerAccountId: actor.activeSellerAccount?.id ?? null
   });
 
   return {
@@ -643,6 +643,16 @@ function createOpenClawAuthorizationApprovedResult(input: {
       workspace: input.workspace
     },
     ok: true as const
+  };
+}
+
+function createOpenClawAuthorizationAuditMetadata(input: {
+  organizationId: string | null;
+  sessionStatus: "authorized" | "cancelled" | "rejected";
+}) {
+  return {
+    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+    sessionStatus: input.sessionStatus
   };
 }
 
@@ -991,6 +1001,16 @@ function requireOpenClawAuthorizationWorkspace(
     activeOrganization,
     activeSellerAccount
   };
+}
+
+function requireOpenClawAuthorizationActor(
+  pageContext: Awaited<ReturnType<typeof getOpenClawAuthorizationPageContext>>
+) {
+  if (!pageContext.workspaceData) {
+    throw new SellerDomainError(401, "unauthorized", "Authentication is required.");
+  }
+
+  return pageContext.workspaceData;
 }
 
 function isWorkspaceCreationContextChangeError(error: unknown) {
