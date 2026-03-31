@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { serializeSellerApiErrorBody } from "./http";
 
 export function createSellerApiErrorResponse(result: {
   code: string;
@@ -8,13 +9,7 @@ export function createSellerApiErrorResponse(result: {
   status: number;
 }) {
   return NextResponse.json(
-    {
-      error: {
-        code: result.code,
-        message: result.message,
-        retryAfterMs: result.retryAfterMs ?? null
-      }
-    },
+    serializeSellerApiErrorBody(result),
     {
       headers:
         typeof result.retryAfterMs === "number"

@@ -66,9 +66,14 @@
   - `GET /api/categories/:categorySlug`
   - `GET /api/listings/:listingId`
 - Seller UI entry points live at:
+  - `/seller`
   - `/sign-in`
   - `/seller/workspace`
   - `/seller/settings`
+- Public discovery entry points live at:
+  - `/`
+  - `/llms.txt`
+  - `/openapi.json`
 - OpenClaw authorization is currently limited to one organization-owned API key per seller workspace.
 - Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
 - Seller API keys authenticate seller API routes only. Browser seller UI still requires a browser session.
@@ -199,7 +204,9 @@
 This repo follows a harness-style progressive disclosure model:
 
 - `README.md` and `AGENTS.md` are entrypoints
-- `apps/web/public/llms.txt` is served at `/llms.txt` for LLM and agent guidance
+- `apps/web/app/llms.txt/route.ts` serves generated LLM and agent guidance at `/llms.txt`
+- `apps/web/app/openapi.json/route.ts` serves the generated current API description at `/openapi.json`
+- `apps/web/lib/discovery/content.ts` is the shared source of truth for route intent and linked discovery docs
 - durable truth lives in focused docs
 - plans live in `docs/plans/`
 - scratch notes do not belong in version control

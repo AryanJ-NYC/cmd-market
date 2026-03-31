@@ -4,12 +4,13 @@ CMD Market is a peer-to-peer marketplace operated by Scarce City, Inc. Sellers l
 
 ## Current Scope
 
-This repository currently contains the initial frontend scaffold:
+This repository currently contains CMD Market's first real public and seller-facing slice:
 
 - a Turborepo workspace
 - one Next.js web app in `apps/web`
 - shared TypeScript and Tailwind-related workspace packages
-- a minimal homepage used to verify the stack is wired correctly
+- a public homepage, seller entry page, and generated discovery routes at `/llms.txt` and `/openapi.json`
+- browser seller bootstrap plus public category/listing reads and seller-scoped draft authoring, media, patch, and publish APIs
 
 ## Quick Start
 

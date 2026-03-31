@@ -42,4 +42,7 @@ Use this file as the agent entrypoint for this repository. Keep it short. Treat 
 ## Freshness Rules
 
 - Update the linked source-of-truth docs when behavior or structure changes.
+- If routes, auth boundaries, or the public API surface change, update `docs/development.md`, `docs/testing.md`, and the discovery sources in `apps/web/lib/discovery/`.
+- Treat `/llms.txt` and `/openapi.json` as generated outputs: update their source modules and schemas, not hand-maintained copies.
+- If the repo entrypoint or current shipped scope changes materially, refresh `README.md`.
 - Keep this file index-like; do not turn it into the manual.

@@ -1,3 +1,4 @@
+import "zod-openapi";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { createMarketplaceId } from "../db/ids";
@@ -483,65 +484,130 @@ export async function attachDraftListingMedia(
 }
 
 export const uploadSessionsSchema = z.object({
-  listing_id: z.string().min(1),
+  listing_id: z.string().min(1).meta({
+    description: "Seller-owned draft listing identifier.",
+    example: "lst_123",
+  }),
   files: z
     .array(
       z.object({
-        content_type: z.string().min(1),
-        filename: z.string().min(1),
-        size_bytes: z.number().int().positive(),
+        content_type: z.string().min(1).meta({
+          description: "MIME type for the asset upload.",
+          example: "image/jpeg",
+        }),
+        filename: z.string().min(1).meta({
+          description: "Original filename for the uploaded asset.",
+          example: "front.jpg",
+        }),
+        size_bytes: z.number().int().positive().meta({
+          description: "File size in bytes.",
+          example: 2_488_331,
+        }),
       }),
     )
     .min(1),
+}).meta({
+  description: "Draft-scoped upload session request payload.",
+  id: "UploadSessionsRequest",
 });
 
 export const attachListingMediaSchema = z.object({
   media: z
     .array(
       z.object({
-        alt_text: z.string().trim().min(1).nullable().optional(),
-        asset_key: z.string().min(1),
-        sort_order: z.number().int().nonnegative().optional(),
+        alt_text: z.string().trim().min(1).nullable().optional().meta({
+          description: "Optional alt text for the uploaded media.",
+          example: "Front of the card",
+        }),
+        asset_key: z.string().min(1).meta({
+          description: "Stable storage key returned by the upload session step.",
+          example: "listings/drafts/lst_123/asset_123-front.jpg",
+        }),
+        sort_order: z.number().int().nonnegative().optional().meta({
+          description: "Optional display order for the media item.",
+          example: 0,
+        }),
       }),
     )
     .min(1),
+}).meta({
+  description: "Draft listing media attachment payload.",
+  id: "AttachListingMediaRequest",
 });
 
 const draftListingFieldsSchema = z.object({
-  category_id: z.string().trim().min(1).optional(),
-  condition_code: z.string().trim().min(1).optional(),
-  description: z.string().trim().min(1).optional(),
+  category_id: z.string().trim().min(1).optional().meta({
+    description: "Optional category identifier for the draft listing.",
+    example: "cat_cards",
+  }),
+  condition_code: z.string().trim().min(1).optional().meta({
+    description: "Optional marketplace condition code.",
+    example: "used_good",
+  }),
+  description: z.string().trim().min(1).optional().meta({
+    description: "Optional seller-facing listing description.",
+    example: "Clean slab, no cracks, centered well.",
+  }),
   price: z
     .object({
-      amount_minor: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX),
-      currency_code: z.string().trim().length(3),
+      amount_minor: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX).meta({
+        description: "Price amount in minor currency units.",
+        example: 125000,
+      }),
+      currency_code: z.string().trim().length(3).meta({
+        description: "ISO currency code.",
+        example: "USD",
+      }),
     })
-    .optional(),
-  quantity_available: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX).optional(),
-  title: z.string().trim().min(1).optional(),
+    .optional()
+    .meta({
+      description: "Optional listing price.",
+      id: "DraftListingPriceInput",
+    }),
+  quantity_available: z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX).optional().meta({
+    description: "Optional available quantity.",
+    example: 1,
+  }),
+  title: z.string().trim().min(1).optional().meta({
+    description: "Optional listing title.",
+    example: "1999 Charizard Holo PSA 8",
+  }),
 });
 
-export const createDraftListingSchema = draftListingFieldsSchema.strict();
+export const createDraftListingSchema = draftListingFieldsSchema.strict().meta({
+  description: "Payload for creating a seller-owned draft listing.",
+  id: "CreateDraftListingRequest",
+});
 
 export const updateDraftListingSchema = draftListingFieldsSchema
   .extend({
-  attributes: z
-    .array(
-      z.object({
-        key: z.string().trim().min(1),
-        value: z.union([
-          z.string(),
-          z.number().finite(),
-          z.boolean(),
-          z.array(z.unknown()),
-          z.record(z.string(), z.unknown()),
-          z.null(),
-        ]),
+    attributes: z
+      .array(
+        z.object({
+          key: z.string().trim().min(1).meta({
+            description: "Category attribute key.",
+            example: "grading_company",
+          }),
+          value: z.union([
+            z.string(),
+            z.number().finite(),
+            z.boolean(),
+            z.array(z.unknown()),
+            z.record(z.string(), z.unknown()),
+            z.null(),
+          ]),
+        }),
+      )
+      .optional()
+      .meta({
+        description: "Optional typed category attributes to set or clear on the draft listing.",
       }),
-    )
-    .optional(),
   })
-  .strict();
+  .strict()
+  .meta({
+    description: "Payload for patching a seller-owned draft listing.",
+    id: "UpdateDraftListingRequest",
+  });
 
 export function parseUploadSessionsInput(
   input: z.infer<typeof uploadSessionsSchema>,
