@@ -98,16 +98,19 @@
 - The Prisma client is regenerated on install through the root `postinstall` hook, and can be regenerated manually with `pnpm db:generate`.
 - Vercel runs `pnpm vercel-build`, which applies `prisma migrate deploy` before `pnpm build`.
 - If an older local PostgreSQL volume reports Prisma drift from pre-reset seller-account migrations, reset that local dev database once with `pnpm db:stop`, then `pnpm db:start`, then rerun `pnpm db:migrate`.
+- Set `OPENCLAW_CLIENT_SECRET` in `apps/web/.env` before using the OpenClaw authorization-session API routes.
 
 ## OpenClaw Browser Handoff
 
 1. Start an authorization session from OpenClaw:
    ```bash
-   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions
+   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions \
+     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET"
    ```
    You can optionally prefill the first seller workspace OpenClaw wants CMD Market to offer during onboarding:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions \
+     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
        "proposed_workspace": {
@@ -123,6 +126,7 @@
 5. Poll the session from OpenClaw:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/status \
+     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
        "exchange_code": "exchange_secret"
@@ -131,6 +135,7 @@
 6. Redeem the authorized session into the seller-scoped API key:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/redeem \
+     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
        "exchange_code": "exchange_secret"

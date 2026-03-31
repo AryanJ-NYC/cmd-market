@@ -43,6 +43,7 @@ describe("POST /api/openclaw/authorization-sessions", () => {
           }
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -67,6 +68,33 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     });
   });
 
+  it("returns unauthorized when the OpenClaw client secret is missing", async () => {
+    const routePath = new URL("./route.ts", import.meta.url);
+
+    expect(existsSync(routePath)).toBe(true);
+
+    if (!existsSync(routePath)) {
+      return;
+    }
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("https://cmd.market/api/openclaw/authorization-sessions", {
+        method: "POST"
+      })
+    );
+
+    expect(createOpenClawAuthorizationSession).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Valid OpenClaw client authorization is required.",
+        retryAfterMs: null
+      }
+    });
+  });
+
   it("returns invalid_request when the optional proposed workspace payload is malformed", async () => {
     const routePath = new URL("./route.ts", import.meta.url);
 
@@ -85,6 +113,7 @@ describe("POST /api/openclaw/authorization-sessions", () => {
           }
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"

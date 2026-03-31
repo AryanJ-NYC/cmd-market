@@ -137,6 +137,9 @@ describe("seller workspace", () => {
     expect(sellerWorkspace.buildSellerReturnPath("//evil.example.com", "/seller/workspace")).toBe(
       "/seller/workspace"
     );
+    expect(sellerWorkspace.buildSellerReturnPath("/\\evil.example.com", "/seller/workspace")).toBe(
+      "/seller/workspace"
+    );
     expect(sellerWorkspace.buildSellerReturnPath("seller/workspace", "/seller/workspace")).toBe(
       "/seller/workspace"
     );

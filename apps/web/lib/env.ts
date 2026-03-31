@@ -9,6 +9,9 @@ const runtimeEnv = {
   DO_SPACES_SECRET_ACCESS_KEY: process.env.DO_SPACES_SECRET_ACCESS_KEY,
   NEON_DATABASE_URL: process.env.NEON_DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
+  OPENCLAW_CLIENT_SECRET:
+    process.env.OPENCLAW_CLIENT_SECRET ??
+    (process.env.NODE_ENV === "test" ? "test-openclaw-client-secret" : undefined),
   X_CLIENT_ID: process.env.X_CLIENT_ID,
   X_CLIENT_SECRET: process.env.X_CLIENT_SECRET
 };
@@ -23,6 +26,7 @@ const validatedEnv = createEnv({
     DO_SPACES_SECRET_ACCESS_KEY: z.string().min(1),
     NEON_DATABASE_URL: z.string().url(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    OPENCLAW_CLIENT_SECRET: z.string().min(1),
     X_CLIENT_ID: z.string().min(1),
     X_CLIENT_SECRET: z.string().min(1)
   }
@@ -35,6 +39,7 @@ export const env = {
   doSpacesAccessKeyId: validatedEnv.DO_SPACES_ACCESS_KEY_ID,
   doSpacesSecretAccessKey: validatedEnv.DO_SPACES_SECRET_ACCESS_KEY,
   nodeEnv: validatedEnv.NODE_ENV,
+  openClawClientSecret: validatedEnv.OPENCLAW_CLIENT_SECRET,
   xClientId: validatedEnv.X_CLIENT_ID ?? null,
   xClientSecret: validatedEnv.X_CLIENT_SECRET ?? null,
   developmentSellerOverrideEmails: splitCsv(validatedEnv.DEV_SELLER_OVERRIDE_EMAILS)

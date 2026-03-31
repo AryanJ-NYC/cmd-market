@@ -31,6 +31,7 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
 - Apply migrations with `pnpm db:migrate`.
 - Replace the placeholder Spaces constants in `apps/web/lib/storage/spaces.ts`.
 - Set `DO_SPACES_ACCESS_KEY_ID` and `DO_SPACES_SECRET_ACCESS_KEY` in `apps/web/.env`.
+- Set `OPENCLAW_CLIENT_SECRET` in `apps/web/.env`.
 - Run the app with `pnpm dev`.
 - Verify:
   - homepage at `/` shows a visible `For agents` quickstart and explicit seller/auth boundary copy
@@ -39,7 +40,7 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
   - sign-in at `/sign-in`
   - workspace create/select flow at `/seller/workspace`
   - single-workspace auto-activation and multi-workspace POST selection at `/seller/workspace`
-  - OpenClaw browser handoff create/poll/redeem flow works end-to-end through `/api/openclaw/authorization-sessions*`
+  - OpenClaw browser handoff create/poll/redeem flow works end-to-end through `/api/openclaw/authorization-sessions*` with `Authorization: Bearer <openclaw-client-secret>`
   - the consent screen at `/seller/authorize/openclaw/:browserToken` handles sign-in redirects, inline first-workspace creation, workspace redirects, approval, rejection, and terminal states
   - seller settings and manual OpenClaw key creation still work at `/seller/settings`
   - development override only appears outside production and only for allowlisted sellers

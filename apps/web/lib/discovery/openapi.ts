@@ -79,6 +79,13 @@ export function buildOpenApiDocument() {
           name: "better-auth.session_token",
           type: "apiKey"
         },
+        openClawClientBearer: {
+          bearerFormat: "OpenClaw client secret",
+          description:
+            "Shared client secret sent as `Authorization: Bearer <openclaw-client-secret>` for OpenClaw authorization-session routes.",
+          scheme: "bearer",
+          type: "http"
+        },
         sellerApiKey: {
           description:
             "Seller-scoped API key sent in the `x-api-key` header for `/api/seller/*` requests. API keys do not authenticate browser `/seller/*` routes.",
@@ -150,11 +157,12 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions": {
         post: {
           description:
-            "Starts a short-lived OpenClaw browser handoff authorization session and returns the browser URL plus one-time exchange code.",
+            "Starts a short-lived OpenClaw browser handoff authorization session and returns the browser URL plus one-time exchange code. Requires `Authorization: Bearer <openclaw-client-secret>`.",
           requestBody: jsonRequestBody(
             openClawAuthorizationSessionCreateRequestSchema,
             "Optional proposed first-workspace details to prefill during the OpenClaw browser handoff."
           ),
+          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: createOpenClawAuthorizationSessionRoute.description,
@@ -167,7 +175,7 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions/{sessionId}/status": {
         post: {
           description:
-            "Polls the current state of an OpenClaw browser handoff authorization session using the one-time exchange code.",
+            "Polls the current state of an OpenClaw browser handoff authorization session using the one-time exchange code. Requires `Authorization: Bearer <openclaw-client-secret>`.",
           requestBody: jsonRequestBody(
             openClawAuthorizationExchangeRequestSchema,
             "One-time exchange code for the OpenClaw authorization session.",
@@ -181,6 +189,7 @@ export function buildOpenApiDocument() {
               })
             })
           },
+          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: openClawAuthorizationSessionStatusRoute.description,
@@ -193,7 +202,7 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions/{sessionId}/redeem": {
         post: {
           description:
-            "Redeems an authorized OpenClaw browser handoff authorization session into a seller-scoped API key.",
+            "Redeems an authorized OpenClaw browser handoff authorization session into a seller-scoped API key. Requires `Authorization: Bearer <openclaw-client-secret>`.",
           requestBody: jsonRequestBody(
             openClawAuthorizationExchangeRequestSchema,
             "One-time exchange code for the OpenClaw authorization session.",
@@ -207,6 +216,7 @@ export function buildOpenApiDocument() {
               })
             })
           },
+          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: openClawAuthorizationSessionRedeemRoute.description,

@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { parseOptionalSellerApiRequestBody } from "../../../../lib/seller/api";
 import { openClawAuthorizationSessionCreateRequestSchema } from "../../../../lib/seller/http";
+import { requireOpenClawClientAuthorization } from "../../../../lib/seller/openclaw-client-auth";
 import { createOpenClawAuthorizationSession } from "../../../../lib/seller/service";
 
 export async function POST(request: Request) {
+  const unauthorizedResponse = requireOpenClawClientAuthorization(request);
+
+  if (unauthorizedResponse) {
+    return unauthorizedResponse;
+  }
+
   const parsed = await parseOptionalSellerApiRequestBody(
     request,
     openClawAuthorizationSessionCreateRequestSchema,

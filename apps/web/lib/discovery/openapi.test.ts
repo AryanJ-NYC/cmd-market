@@ -9,6 +9,7 @@ describe("buildOpenApiDocument", () => {
     expect(document.openapi).toBe("3.1.0");
     expect(document.info.title).toBe("CMD Market API");
     expect(document.components?.securitySchemes?.browserSession).toBeDefined();
+    expect(document.components?.securitySchemes?.openClawClientBearer).toBeDefined();
     expect(document.components?.securitySchemes?.sellerApiKey).toBeDefined();
     expect(paths["/api/categories"]?.get).toBeDefined();
     expect(paths["/api/categories/{categorySlug}"]?.get).toBeDefined();
@@ -49,6 +50,15 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/context"]?.get?.description).toContain(
       "API keys do not authenticate browser `/seller/*` routes."
     );
+    expect(paths["/api/openclaw/authorization-sessions"]?.post?.security).toEqual([
+      { openClawClientBearer: [] }
+    ]);
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post?.security).toEqual([
+      { openClawClientBearer: [] }
+    ]);
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post?.security).toEqual([
+      { openClawClientBearer: [] }
+    ]);
     expect(document.components?.schemas?.OpenClawAuthorizationSessionCreateRequest).toMatchObject({
       properties: {
         proposed_workspace: {

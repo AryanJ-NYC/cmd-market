@@ -5,12 +5,19 @@ import {
   parseSellerApiRequestBody
 } from "../../../../../../lib/seller/api";
 import { SellerDomainError } from "../../../../../../lib/seller/domain";
+import { requireOpenClawClientAuthorization } from "../../../../../../lib/seller/openclaw-client-auth";
 import { redeemOpenClawAuthorizationSession } from "../../../../../../lib/seller/service";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
+  const unauthorizedResponse = requireOpenClawClientAuthorization(request);
+
+  if (unauthorizedResponse) {
+    return unauthorizedResponse;
+  }
+
   const parsed = await parseSellerApiRequestBody(
     request,
     z.object({

@@ -70,7 +70,12 @@ export function buildOpenClawApiKeyRequest({
 }
 
 export function buildSellerReturnPath(candidatePath: string | null, fallbackPath: string) {
-  if (!candidatePath || !candidatePath.startsWith("/") || candidatePath.startsWith("//")) {
+  if (
+    !candidatePath ||
+    !candidatePath.startsWith("/") ||
+    candidatePath.startsWith("//") ||
+    candidatePath.includes("\\")
+  ) {
     return fallbackPath;
   }
 

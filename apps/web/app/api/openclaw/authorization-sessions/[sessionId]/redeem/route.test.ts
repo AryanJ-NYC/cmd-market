@@ -45,6 +45,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
           exchange_code: "exchange_secret"
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -75,6 +76,44 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
     });
   });
 
+  it("returns unauthorized when the OpenClaw client secret is missing", async () => {
+    const routePath = new URL("./route.ts", import.meta.url);
+
+    expect(existsSync(routePath)).toBe(true);
+
+    if (!existsSync(routePath)) {
+      return;
+    }
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
+        body: JSON.stringify({
+          exchange_code: "exchange_secret"
+        }),
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      {
+        params: Promise.resolve({
+          sessionId: "auth_123"
+        })
+      }
+    );
+
+    expect(redeemOpenClawAuthorizationSession).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Valid OpenClaw client authorization is required.",
+        retryAfterMs: null
+      }
+    });
+  });
+
   it("returns a structured pending error when the session is not ready to redeem", async () => {
     const routePath = new URL("./route.ts", import.meta.url);
 
@@ -95,6 +134,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
           exchange_code: "exchange_secret"
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -130,6 +170,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
       new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
         body: "{not-json",
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"

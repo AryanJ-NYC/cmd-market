@@ -40,6 +40,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/status", () => {
           exchange_code: "exchange_secret"
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -65,6 +66,44 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/status", () => {
     });
   });
 
+  it("returns unauthorized when the OpenClaw client secret is missing", async () => {
+    const routePath = new URL("./route.ts", import.meta.url);
+
+    expect(existsSync(routePath)).toBe(true);
+
+    if (!existsSync(routePath)) {
+      return;
+    }
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/status", {
+        body: JSON.stringify({
+          exchange_code: "exchange_secret"
+        }),
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      {
+        params: Promise.resolve({
+          sessionId: "auth_123"
+        })
+      }
+    );
+
+    expect(getOpenClawAuthorizationSessionStatus).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Valid OpenClaw client authorization is required.",
+        retryAfterMs: null
+      }
+    });
+  });
+
   it("returns a structured exchange error when the status lookup is invalid", async () => {
     const routePath = new URL("./route.ts", import.meta.url);
 
@@ -85,6 +124,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/status", () => {
           exchange_code: "bad_exchange"
         }),
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -120,6 +160,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/status", () => {
       new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/status", {
         body: "{not-json",
         headers: {
+          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
