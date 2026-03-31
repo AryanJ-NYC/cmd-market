@@ -772,6 +772,67 @@ describe("seller service", () => {
     expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledWith("key_new");
   });
 
+  it("returns authorization_redeemed when key promotion races with another issued OpenClaw key", async () => {
+    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash
+      .mockResolvedValueOnce(
+        createOpenClawAuthorizationSessionRecord({
+          authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+          authorizedByUserId: "user_123",
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          organizationId: "org_123",
+          status: "authorized"
+        })
+      )
+      .mockResolvedValueOnce(
+        createOpenClawAuthorizationSessionRecord({
+          authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+          authorizedByUserId: "user_123",
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          organizationId: "org_123",
+          status: "authorized"
+        })
+      );
+    openClawAuthorizationSessionRepository.findApiKeyByOrganizationId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        configId: "openclaw",
+        id: "key_other"
+      });
+    authApi.createApiKey.mockResolvedValue({
+      id: "key_new",
+      key: "cmdmkt_secret"
+    });
+    sellerAccountRepository.findByOrganizationId.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation.mockRejectedValue({
+      code: "P2002",
+      message: "Unique constraint failed on the fields: (`configId`,`referenceId`)",
+      meta: {
+        target: ["configId", "referenceId"]
+      }
+    });
+
+    await expect(
+      sellerService.redeemOpenClawAuthorizationSession({
+        exchangeCode: "exchange_secret",
+        sessionId: "auth_123"
+      })
+    ).rejects.toMatchObject({
+      code: "authorization_redeemed",
+      message: "OpenClaw authorization session has already been redeemed."
+    });
+
+    expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledWith("key_new");
+    expect(openClawAuthorizationSessionRepository.findApiKeyByOrganizationId).toHaveBeenCalledTimes(2);
+  });
+
   it("cleans up the staged OpenClaw key and returns a terminal error when redeem loses the race", async () => {
     openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({

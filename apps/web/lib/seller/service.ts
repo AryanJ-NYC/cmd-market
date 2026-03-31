@@ -468,16 +468,22 @@ export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthoriz
       );
     }
   } catch (caughtError) {
+    const normalizedError = await normalizeOpenClawRedeemFailure({
+      error: caughtError,
+      input,
+      organizationId: session.organizationId
+    });
+
     try {
       await openClawAuthorizationSessionRepository.deleteApiKeyById(createdKey.id);
     } catch (cleanupError) {
       throw new AggregateError(
-        [caughtError, cleanupError],
+        [normalizedError, cleanupError],
         "OpenClaw redeem failed and cleanup of the staged API key also failed."
       );
     }
 
-    throw caughtError;
+    throw normalizedError;
   }
 
   return {
@@ -780,7 +786,7 @@ async function createOpenClawPendingRotationApiKey(
       }
     });
   } catch (caughtError) {
-    if (!isOpenClawPendingRotationConflictError(caughtError)) {
+    if (!isOpenClawApiKeyUniquenessConflictError(caughtError)) {
       throw caughtError;
     }
 
@@ -792,6 +798,31 @@ async function createOpenClawPendingRotationApiKey(
 
     throw createOpenClawRedeemError(currentSession.status);
   }
+}
+
+async function normalizeOpenClawRedeemFailure(input: {
+  error: unknown;
+  input: OpenClawAuthorizationSessionLookup;
+  organizationId: string;
+}) {
+  if (!isOpenClawApiKeyUniquenessConflictError(input.error)) {
+    return input.error;
+  }
+
+  const [currentSession, currentOpenClawKey] = await Promise.all([
+    readOpenClawAuthorizationSessionForExchange(input.input),
+    openClawAuthorizationSessionRepository.findApiKeyByOrganizationId(input.organizationId)
+  ]);
+
+  if (currentOpenClawKey) {
+    return createOpenClawRedeemError("redeemed");
+  }
+
+  if (!currentSession) {
+    return new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+  }
+
+  return createOpenClawRedeemError(currentSession.status);
 }
 
 async function requireResolvedOpenClawAuthorizationSession(session: OpenClawAuthorizationSessionRecord) {
@@ -928,7 +959,7 @@ function createOpenClawRedeemError(status: OpenClawAuthorizationSessionRecord["s
   }
 }
 
-function isOpenClawPendingRotationConflictError(error: unknown) {
+function isOpenClawApiKeyUniquenessConflictError(error: unknown) {
   const uniqueTarget = readPrismaUniqueTarget(error);
 
   if (uniqueTarget.length > 0) {
