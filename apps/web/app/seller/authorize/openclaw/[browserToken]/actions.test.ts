@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SellerDomainError } from "../../../../../lib/seller/domain";
 
 const {
   authorizeOpenClawAuthorizationSession,
@@ -123,6 +124,29 @@ describe("openclaw authorization actions", () => {
     const { cancelOpenClawAuthorizationAction } = await import("./actions");
 
     await expect(cancelOpenClawAuthorizationAction(formData)).rejects.toThrow(
+      "redirect:/seller/authorize/openclaw/browser_token"
+    );
+  });
+
+  it("redirects back to the handoff page when authorize hits a recoverable seller-domain error", async () => {
+    const actionsPath = new URL("./actions.ts", import.meta.url);
+
+    expect(existsSync(actionsPath)).toBe(true);
+
+    if (!existsSync(actionsPath)) {
+      return;
+    }
+
+    authorizeOpenClawAuthorizationSession.mockRejectedValue(
+      new SellerDomainError(409, "authorization_expired", "OpenClaw authorization session has expired.")
+    );
+
+    const formData = new FormData();
+    formData.set("browserToken", "browser_token");
+
+    const { authorizeOpenClawAuthorizationAction } = await import("./actions");
+
+    await expect(authorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
       "redirect:/seller/authorize/openclaw/browser_token"
     );
   });

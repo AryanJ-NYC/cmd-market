@@ -14,7 +14,8 @@ const { prisma } = vi.hoisted(() => ({
     openClawAuthorizationSession: {
       create: vi.fn(),
       findFirst: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
+      updateMany: vi.fn()
     }
   }
 }));
@@ -35,6 +36,7 @@ describe("openclaw authorization session repository", () => {
     prisma.openClawAuthorizationSession.create.mockReset();
     prisma.openClawAuthorizationSession.findFirst.mockReset();
     prisma.openClawAuthorizationSession.update.mockReset();
+    prisma.openClawAuthorizationSession.updateMany.mockReset();
   });
 
   it("creates an OpenClaw authorization session row", async () => {
@@ -141,6 +143,72 @@ describe("openclaw authorization session repository", () => {
       }
     });
     expect(rejected).toEqual(updatedRecord);
+  });
+
+  it("marks an OpenClaw authorization session as expired only while it is still pending or authorized", async () => {
+    const expiredRecord = createAuthorizationSessionRecord({
+      expiredAt: new Date("2026-03-31T03:20:00.000Z"),
+      failureCode: "authorization_expired",
+      failureMessage: "OpenClaw authorization session expired before completion.",
+      status: "expired",
+      updatedAt: new Date("2026-03-31T03:20:00.000Z")
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionRecord>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(expiredRecord);
+
+    const expired = await openClawAuthorizationSessionRepository.markExpired({
+      expiredAt: new Date("2026-03-31T03:20:00.000Z"),
+      failureCode: "authorization_expired",
+      failureMessage: "OpenClaw authorization session expired before completion.",
+      id: "auth_123"
+    });
+
+    expect(prisma.openClawAuthorizationSession.updateMany).toHaveBeenCalledWith({
+      data: {
+        expiredAt: new Date("2026-03-31T03:20:00.000Z"),
+        failureCode: "authorization_expired",
+        failureMessage: "OpenClaw authorization session expired before completion.",
+        status: "expired",
+        updatedAt: new Date("2026-03-31T03:20:00.000Z")
+      },
+      where: {
+        id: "auth_123",
+        status: {
+          in: ["authorized", "pending"]
+        }
+      }
+    });
+    expect(prisma.openClawAuthorizationSession.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "auth_123"
+      }
+    });
+    expect(expired).toEqual(expiredRecord);
+  });
+
+  it("returns the current terminal session when expiration loses a concurrent race", async () => {
+    const redeemedRecord = createAuthorizationSessionRecord({
+      redeemedAt: new Date("2026-03-31T03:19:59.000Z"),
+      status: "redeemed",
+      updatedAt: new Date("2026-03-31T03:19:59.000Z")
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionRecord>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 0 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(redeemedRecord);
+
+    const expired = await openClawAuthorizationSessionRepository.markExpired({
+      expiredAt: new Date("2026-03-31T03:20:00.000Z"),
+      failureCode: "authorization_expired",
+      failureMessage: "OpenClaw authorization session expired before completion.",
+      id: "auth_123"
+    });
+
+    expect(expired).toEqual(redeemedRecord);
   });
 
   it("writes OpenClaw authorization audit events", async () => {

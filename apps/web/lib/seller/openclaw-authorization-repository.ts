@@ -144,17 +144,34 @@ export class PrismaOpenClawAuthorizationSessionRepository {
   }
 
   async markExpired(input: MarkExpiredInput) {
-    const updated = await this.database.openClawAuthorizationSession.update({
-      data: {
-        expiredAt: input.expiredAt,
-        failureCode: input.failureCode,
-        failureMessage: input.failureMessage,
-        status: "expired",
-        updatedAt: input.expiredAt
-      },
-      where: {
-        id: input.id
+    const updated = await this.database.$transaction(async (transaction) => {
+      await transaction.openClawAuthorizationSession.updateMany({
+        data: {
+          expiredAt: input.expiredAt,
+          failureCode: input.failureCode,
+          failureMessage: input.failureMessage,
+          status: "expired",
+          updatedAt: input.expiredAt
+        },
+        where: {
+          id: input.id,
+          status: {
+            in: ["authorized", "pending"]
+          }
+        }
+      });
+
+      const current = await transaction.openClawAuthorizationSession.findFirst({
+        where: {
+          id: input.id
+        }
+      });
+
+      if (!current) {
+        throw new Error(`OpenClaw authorization session ${input.id} was not found.`);
       }
+
+      return current;
     });
 
     return mapOpenClawAuthorizationSessionModel(updated);
