@@ -61,4 +61,29 @@ describe("seller workspace actions", () => {
       "redirect:/seller/authorize/openclaw/browser_token"
     );
   });
+
+  it("preserves next when workspace creation fails", async () => {
+    createSellerWorkspace.mockRejectedValue(new Error("Workspace already exists."));
+
+    const formData = new FormData();
+    formData.set("name", "Acme");
+    formData.set("next", "/seller/authorize/openclaw/browser_token");
+    formData.set("slug", "acme");
+
+    await expect(createWorkspaceAction(formData)).rejects.toThrow(
+      "redirect:/seller/workspace?error=Workspace+already+exists.&next=%2Fseller%2Fauthorize%2Fopenclaw%2Fbrowser_token"
+    );
+  });
+
+  it("preserves next when workspace activation fails", async () => {
+    activateSellerWorkspace.mockRejectedValue(new Error("Workspace activation failed."));
+
+    const formData = new FormData();
+    formData.set("next", "/seller/authorize/openclaw/browser_token");
+    formData.set("organizationId", "org_123");
+
+    await expect(activateWorkspaceAction(formData)).rejects.toThrow(
+      "redirect:/seller/workspace?error=Workspace+activation+failed.&next=%2Fseller%2Fauthorize%2Fopenclaw%2Fbrowser_token"
+    );
+  });
 });

@@ -703,6 +703,57 @@ describe("seller service", () => {
     expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledWith("key_new");
   });
 
+  it("surfaces cleanup failures when staged-key rollback also fails", async () => {
+    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+        authorizedByUserId: "user_123",
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        organizationId: "org_123",
+        status: "authorized"
+      })
+    );
+    openClawAuthorizationSessionRepository.findApiKeyByOrganizationId.mockResolvedValue({
+      configId: "openclaw",
+      id: "key_existing"
+    });
+    authApi.createApiKey.mockResolvedValue({
+      id: "key_new",
+      key: "cmdmkt_secret"
+    });
+    sellerAccountRepository.findByOrganizationId.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation.mockRejectedValue(
+      new Error("rotation transaction failed")
+    );
+    openClawAuthorizationSessionRepository.deleteApiKeyById.mockRejectedValue(new Error("cleanup failed"));
+
+    let caughtError: unknown;
+
+    try {
+      await sellerService.redeemOpenClawAuthorizationSession({
+        exchangeCode: "exchange_secret",
+        sessionId: "auth_123"
+      });
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(AggregateError);
+    expect((caughtError as AggregateError).message).toBe(
+      "OpenClaw redeem failed and cleanup of the staged API key also failed."
+    );
+    expect((caughtError as AggregateError).errors).toMatchObject([
+      { message: "rotation transaction failed" },
+      { message: "cleanup failed" }
+    ]);
+  });
+
   it("returns a terminal rejected error when OpenClaw tries to redeem a rejected session", async () => {
     openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({

@@ -421,7 +421,12 @@ export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthoriz
   } catch (caughtError) {
     try {
       await openClawAuthorizationSessionRepository.deleteApiKeyById(createdKey.id);
-    } catch {}
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [caughtError, cleanupError],
+        "OpenClaw redeem failed and cleanup of the staged API key also failed."
+      );
+    }
 
     throw caughtError;
   }
