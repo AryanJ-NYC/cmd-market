@@ -563,6 +563,20 @@ describe("seller service", () => {
       id: "key_new",
       key: "cmdmkt_secret"
     });
+    openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation.mockResolvedValue({
+      applied: true,
+      session: createOpenClawAuthorizationSessionRecord({
+        authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+        authorizedByUserId: "user_123",
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        organizationId: "org_123",
+        redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
+        status: "redeemed",
+        updatedAt: new Date("2026-03-31T03:11:00.000Z")
+      })
+    });
     sellerAccountRepository.findByOrganizationId.mockResolvedValue(
       createSellerAccount({
         listingEligibilityStatus: "eligible",
@@ -703,6 +717,60 @@ describe("seller service", () => {
     expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledWith("key_new");
   });
 
+  it("cleans up the staged OpenClaw key and returns a terminal error when redeem loses the race", async () => {
+    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+        authorizedByUserId: "user_123",
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        organizationId: "org_123",
+        status: "authorized"
+      })
+    );
+    openClawAuthorizationSessionRepository.findApiKeyByOrganizationId.mockResolvedValue({
+      configId: "openclaw",
+      id: "key_existing"
+    });
+    authApi.createApiKey.mockResolvedValue({
+      id: "key_new",
+      key: "cmdmkt_secret"
+    });
+    sellerAccountRepository.findByOrganizationId.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation.mockResolvedValue({
+      applied: false,
+      session: createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        expiredAt: new Date("2026-03-31T03:11:00.000Z"),
+        failureCode: "authorization_expired",
+        failureMessage: "OpenClaw authorization session expired before completion.",
+        id: "auth_123",
+        organizationId: "org_123",
+        status: "expired",
+        updatedAt: new Date("2026-03-31T03:11:00.000Z")
+      })
+    });
+
+    await expect(
+      sellerService.redeemOpenClawAuthorizationSession({
+        exchangeCode: "exchange_secret",
+        sessionId: "auth_123"
+      })
+    ).rejects.toMatchObject({
+      code: "authorization_expired",
+      message: "OpenClaw authorization session has expired."
+    });
+
+    expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledTimes(1);
+    expect(openClawAuthorizationSessionRepository.deleteApiKeyById).toHaveBeenCalledWith("key_new");
+  });
+
   it("surfaces cleanup failures when staged-key rollback also fails", async () => {
     openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
@@ -796,15 +864,18 @@ describe("seller service", () => {
       })
     );
     openClawAuthorizationSessionRepository.markAuthorized.mockResolvedValue(
-      createOpenClawAuthorizationSessionRecord({
-        authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
-        authorizedByUserId: "user_123",
-        browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
-        id: "auth_123",
-        organizationId: "org_123",
-        status: "authorized"
-      })
+      {
+        applied: true,
+        session: createOpenClawAuthorizationSessionRecord({
+          authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+          authorizedByUserId: "user_123",
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          organizationId: "org_123",
+          status: "authorized"
+        })
+      }
     );
 
     if (typeof sellerService.authorizeOpenClawAuthorizationSession !== "function") {
@@ -870,13 +941,16 @@ describe("seller service", () => {
       })
     );
     openClawAuthorizationSessionRepository.markRejected.mockResolvedValue(
-      createOpenClawAuthorizationSessionRecord({
-        browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
-        id: "auth_123",
-        rejectedAt: new Date("2026-03-31T03:12:00.000Z"),
-        status: "rejected"
-      })
+      {
+        applied: true,
+        session: createOpenClawAuthorizationSessionRecord({
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          rejectedAt: new Date("2026-03-31T03:12:00.000Z"),
+          status: "rejected"
+        })
+      }
     );
 
     const result = await sellerService.rejectOpenClawAuthorizationSession(new Headers(), "browser_token");
@@ -950,13 +1024,16 @@ describe("seller service", () => {
       })
     );
     openClawAuthorizationSessionRepository.markCancelled.mockResolvedValue(
-      createOpenClawAuthorizationSessionRecord({
-        browserTokenHash: "browser_hash",
-        cancelledAt: new Date("2026-03-31T03:12:00.000Z"),
-        exchangeCodeHash: "exchange_hash",
-        id: "auth_123",
-        status: "cancelled"
-      })
+      {
+        applied: true,
+        session: createOpenClawAuthorizationSessionRecord({
+          browserTokenHash: "browser_hash",
+          cancelledAt: new Date("2026-03-31T03:12:00.000Z"),
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          status: "cancelled"
+        })
+      }
     );
 
     if (typeof sellerService.cancelOpenClawAuthorizationSession !== "function") {

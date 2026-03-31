@@ -243,18 +243,38 @@ export async function authorizeOpenClawAuthorizationSession(headers: HeadersLike
     organizationId: pageContext.workspaceData.activeOrganization.id
   });
 
+  if (!authorizedSession.applied) {
+    const currentSession = await requireResolvedOpenClawAuthorizationSession(authorizedSession.session);
+
+    if (
+      currentSession.status === "authorized" &&
+      currentSession.organizationId === pageContext.workspaceData.activeOrganization.id
+    ) {
+      return {
+        data: {
+          sessionId: currentSession.id,
+          status: currentSession.status,
+          workspace: pageContext.workspaceData.activeOrganization
+        },
+        ok: true as const
+      };
+    }
+
+    throw createOpenClawRedeemError(currentSession.status);
+  }
+
   await openClawAuthorizationSessionRepository.createAuditEvent({
     action: "openclaw_authorization.approved",
     actorApiKeyId: null,
     actorType: "user",
     actorUserId: pageContext.workspaceData.session.id,
-    createdAt: authorizedSession.authorizedAt ?? new Date(),
-    entityId: authorizedSession.id,
+    createdAt: authorizedSession.session.authorizedAt ?? new Date(),
+    entityId: authorizedSession.session.id,
     entityTable: "openclaw_authorization_session",
     id: createMarketplaceId(),
     metadata: {
       organizationId: pageContext.workspaceData.activeOrganization.id,
-      sessionStatus: authorizedSession.status
+      sessionStatus: authorizedSession.session.status
     },
     note: "Seller approved OpenClaw workspace access.",
     sellerAccountId: pageContext.workspaceData.activeSellerAccount?.id ?? null
@@ -262,8 +282,8 @@ export async function authorizeOpenClawAuthorizationSession(headers: HeadersLike
 
   return {
     data: {
-      sessionId: authorizedSession.id,
-      status: authorizedSession.status,
+      sessionId: authorizedSession.session.id,
+      status: authorizedSession.session.status,
       workspace: pageContext.workspaceData.activeOrganization
     },
     ok: true as const
@@ -286,18 +306,34 @@ export async function rejectOpenClawAuthorizationSession(headers: HeadersLike, b
     rejectedAt
   });
 
+  if (!rejectedSession.applied) {
+    const currentSession = await requireResolvedOpenClawAuthorizationSession(rejectedSession.session);
+
+    if (currentSession.status === "rejected") {
+      return {
+        data: {
+          sessionId: currentSession.id,
+          status: currentSession.status
+        },
+        ok: true as const
+      };
+    }
+
+    throw createOpenClawRedeemError(currentSession.status);
+  }
+
   await openClawAuthorizationSessionRepository.createAuditEvent({
     action: "openclaw_authorization.rejected",
     actorApiKeyId: null,
     actorType: "user",
     actorUserId: workspaceData.session.id,
     createdAt: rejectedAt,
-    entityId: rejectedSession.id,
+    entityId: rejectedSession.session.id,
     entityTable: "openclaw_authorization_session",
     id: createMarketplaceId(),
     metadata: {
       organizationId: workspaceData.activeOrganization.id,
-      sessionStatus: rejectedSession.status
+      sessionStatus: rejectedSession.session.status
     },
     note: "OpenClaw workspace access was rejected.",
     sellerAccountId: workspaceData.activeSellerAccount.id
@@ -305,8 +341,8 @@ export async function rejectOpenClawAuthorizationSession(headers: HeadersLike, b
 
   return {
     data: {
-      sessionId: rejectedSession.id,
-      status: rejectedSession.status
+      sessionId: rejectedSession.session.id,
+      status: rejectedSession.session.status
     },
     ok: true as const
   };
@@ -329,18 +365,34 @@ export async function cancelOpenClawAuthorizationSession(headers: HeadersLike, b
     id: pageContext.session.id
   });
 
+  if (!cancelledSession.applied) {
+    const currentSession = await requireResolvedOpenClawAuthorizationSession(cancelledSession.session);
+
+    if (currentSession.status === "cancelled") {
+      return {
+        data: {
+          sessionId: currentSession.id,
+          status: currentSession.status
+        },
+        ok: true as const
+      };
+    }
+
+    throw createOpenClawRedeemError(currentSession.status);
+  }
+
   await openClawAuthorizationSessionRepository.createAuditEvent({
     action: "openclaw_authorization.cancelled",
     actorApiKeyId: null,
     actorType: "user",
     actorUserId: workspaceData.session.id,
     createdAt: cancelledAt,
-    entityId: cancelledSession.id,
+    entityId: cancelledSession.session.id,
     entityTable: "openclaw_authorization_session",
     id: createMarketplaceId(),
     metadata: {
       organizationId: workspaceData.activeOrganization.id,
-      sessionStatus: cancelledSession.status
+      sessionStatus: cancelledSession.session.status
     },
     note: "OpenClaw authorization session was cancelled.",
     sellerAccountId: workspaceData.activeSellerAccount.id
@@ -348,8 +400,8 @@ export async function cancelOpenClawAuthorizationSession(headers: HeadersLike, b
 
   return {
     data: {
-      sessionId: cancelledSession.id,
-      status: cancelledSession.status
+      sessionId: cancelledSession.session.id,
+      status: cancelledSession.session.status
     },
     ok: true as const
   };
@@ -394,7 +446,7 @@ export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthoriz
   const redeemedAt = new Date();
 
   try {
-    await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
+    const redeemResult = await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
       auditEvent: {
         action: "openclaw_authorization.redeemed",
         actorApiKeyId: null,
@@ -418,6 +470,12 @@ export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthoriz
       redeemedAt,
       sessionId: session.id
     });
+
+    if (!redeemResult.applied) {
+      throw createOpenClawRedeemError(
+        (await requireResolvedOpenClawAuthorizationSession(redeemResult.session)).status
+      );
+    }
   } catch (caughtError) {
     try {
       await openClawAuthorizationSessionRepository.deleteApiKeyById(createdKey.id);
@@ -713,6 +771,16 @@ function createAuthorizationSecret() {
 
 function hashAuthorizationSecret(value: string) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+async function requireResolvedOpenClawAuthorizationSession(session: OpenClawAuthorizationSessionRecord) {
+  const resolvedSession = await resolveExpiredOpenClawAuthorizationSession(session);
+
+  if (!resolvedSession) {
+    throw new SellerDomainError(404, "authorization_not_found", "OpenClaw authorization session was not found.");
+  }
+
+  return resolvedSession;
 }
 
 function requireOpenClawAuthorizationWorkspace(

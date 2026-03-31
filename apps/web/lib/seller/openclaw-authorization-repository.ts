@@ -97,7 +97,8 @@ export class PrismaOpenClawAuthorizationSessionRepository {
   }
 
   async markAuthorized(input: MarkAuthorizedInput) {
-    const updated = await this.database.openClawAuthorizationSession.update({
+    return this.applyPendingTransition({
+      at: input.authorizedAt,
       data: {
         authorizedAt: input.authorizedAt,
         authorizedByUserId: input.authorizedByUserId,
@@ -105,42 +106,32 @@ export class PrismaOpenClawAuthorizationSessionRepository {
         status: "authorized",
         updatedAt: input.authorizedAt
       },
-      where: {
-        id: input.id
-      }
+      id: input.id
     });
-
-    return mapOpenClawAuthorizationSessionModel(updated);
   }
 
   async markCancelled(input: MarkCancelledInput) {
-    const updated = await this.database.openClawAuthorizationSession.update({
+    return this.applyPendingTransition({
+      at: input.cancelledAt,
       data: {
         cancelledAt: input.cancelledAt,
         status: "cancelled",
         updatedAt: input.cancelledAt
       },
-      where: {
-        id: input.id
-      }
+      id: input.id
     });
-
-    return mapOpenClawAuthorizationSessionModel(updated);
   }
 
   async markRejected(input: MarkRejectedInput) {
-    const updated = await this.database.openClawAuthorizationSession.update({
+    return this.applyPendingTransition({
+      at: input.rejectedAt,
       data: {
         rejectedAt: input.rejectedAt,
         status: "rejected",
         updatedAt: input.rejectedAt
       },
-      where: {
-        id: input.id
-      }
+      id: input.id
     });
-
-    return mapOpenClawAuthorizationSessionModel(updated);
   }
 
   async markExpired(input: MarkExpiredInput) {
@@ -177,23 +168,40 @@ export class PrismaOpenClawAuthorizationSessionRepository {
     return mapOpenClawAuthorizationSessionModel(updated);
   }
 
-  async markRedeemed(input: MarkRedeemedInput) {
-    const updated = await this.database.openClawAuthorizationSession.update({
-      data: {
-        redeemedAt: input.redeemedAt,
-        status: "redeemed",
-        updatedAt: input.redeemedAt
-      },
-      where: {
-        id: input.id
-      }
-    });
-
-    return mapOpenClawAuthorizationSessionModel(updated);
-  }
-
   async redeemSessionWithApiKeyRotation(input: RedeemSessionWithApiKeyRotationInput) {
-    await this.database.$transaction(async (transaction) => {
+    return this.database.$transaction(async (transaction) => {
+      const redeemResult = await transaction.openClawAuthorizationSession.updateMany({
+        data: {
+          redeemedAt: input.redeemedAt,
+          status: "redeemed",
+          updatedAt: input.redeemedAt
+        },
+        where: {
+          expiresAt: {
+            gt: input.redeemedAt
+          },
+          id: input.sessionId,
+          status: "authorized"
+        }
+      });
+
+      const current = await transaction.openClawAuthorizationSession.findFirst({
+        where: {
+          id: input.sessionId
+        }
+      });
+
+      if (!current) {
+        throw new Error(`OpenClaw authorization session ${input.sessionId} was not found.`);
+      }
+
+      if (redeemResult.count === 0) {
+        return {
+          applied: false as const,
+          session: mapOpenClawAuthorizationSessionModel(current)
+        };
+      }
+
       if (input.previousApiKeyId) {
         await transaction.apikey.delete({
           where: {
@@ -208,17 +216,6 @@ export class PrismaOpenClawAuthorizationSessionRepository {
         },
         where: {
           id: input.newApiKeyId
-        }
-      });
-
-      await transaction.openClawAuthorizationSession.update({
-        data: {
-          redeemedAt: input.redeemedAt,
-          status: "redeemed",
-          updatedAt: input.redeemedAt
-        },
-        where: {
-          id: input.sessionId
         }
       });
 
@@ -237,6 +234,41 @@ export class PrismaOpenClawAuthorizationSessionRepository {
           sellerAccountId: input.auditEvent.sellerAccountId
         }
       });
+
+      return {
+        applied: true as const,
+        session: mapOpenClawAuthorizationSessionModel(current)
+      };
+    });
+  }
+
+  private async applyPendingTransition(input: ApplyPendingTransitionInput) {
+    return this.database.$transaction(async (transaction) => {
+      const transition = await transaction.openClawAuthorizationSession.updateMany({
+        data: input.data,
+        where: {
+          expiresAt: {
+            gt: input.at
+          },
+          id: input.id,
+          status: "pending"
+        }
+      });
+
+      const current = await transaction.openClawAuthorizationSession.findFirst({
+        where: {
+          id: input.id
+        }
+      });
+
+      if (!current) {
+        throw new Error(`OpenClaw authorization session ${input.id} was not found.`);
+      }
+
+      return {
+        applied: transition.count > 0,
+        session: mapOpenClawAuthorizationSessionModel(current)
+      };
     });
   }
 }
@@ -329,6 +361,11 @@ export type OpenClawAuthorizationAuditEventRecord = {
   sellerAccountId: string | null;
 };
 
+export type OpenClawAuthorizationSessionMutationResult = {
+  applied: boolean;
+  session: OpenClawAuthorizationSessionRecord;
+};
+
 type MarkExpiredInput = {
   expiredAt: Date;
   failureCode: string | null;
@@ -353,15 +390,16 @@ type MarkRejectedInput = {
   rejectedAt: Date;
 };
 
-type MarkRedeemedInput = {
-  id: string;
-  redeemedAt: Date;
-};
-
 type RedeemSessionWithApiKeyRotationInput = {
   auditEvent: OpenClawAuthorizationAuditEventRecord;
   newApiKeyId: string;
   previousApiKeyId: string | null;
   redeemedAt: Date;
   sessionId: string;
+};
+
+type ApplyPendingTransitionInput = {
+  at: Date;
+  data: Prisma.openClawAuthorizationSessionUncheckedUpdateManyInput;
+  id: string;
 };

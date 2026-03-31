@@ -96,7 +96,11 @@ describe("openclaw authorization session repository", () => {
       organizationId: "org_123",
       status: "authorized"
     });
-    prisma.openClawAuthorizationSession.update.mockResolvedValue(updatedRecord);
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionMutationResult>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(updatedRecord);
 
     const authorized = await openClawAuthorizationSessionRepository.markAuthorized({
       authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
@@ -105,7 +109,7 @@ describe("openclaw authorization session repository", () => {
       organizationId: "org_123"
     });
 
-    expect(prisma.openClawAuthorizationSession.update).toHaveBeenCalledWith({
+    expect(prisma.openClawAuthorizationSession.updateMany).toHaveBeenCalledWith({
       data: {
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -114,10 +118,22 @@ describe("openclaw authorization session repository", () => {
         updatedAt: new Date("2026-03-31T03:10:00.000Z")
       },
       where: {
+        expiresAt: {
+          gt: new Date("2026-03-31T03:10:00.000Z")
+        },
+        id: "auth_123",
+        status: "pending"
+      }
+    });
+    expect(prisma.openClawAuthorizationSession.findFirst).toHaveBeenCalledWith({
+      where: {
         id: "auth_123"
       }
     });
-    expect(authorized).toEqual(updatedRecord);
+    expect(authorized).toEqual({
+      applied: true,
+      session: updatedRecord
+    });
   });
 
   it("marks an OpenClaw authorization session as rejected", async () => {
@@ -125,24 +141,40 @@ describe("openclaw authorization session repository", () => {
       rejectedAt: new Date("2026-03-31T03:10:00.000Z"),
       status: "rejected"
     });
-    prisma.openClawAuthorizationSession.update.mockResolvedValue(updatedRecord);
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionMutationResult>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(updatedRecord);
 
     const rejected = await openClawAuthorizationSessionRepository.markRejected({
       id: "auth_123",
       rejectedAt: new Date("2026-03-31T03:10:00.000Z")
     });
 
-    expect(prisma.openClawAuthorizationSession.update).toHaveBeenCalledWith({
+    expect(prisma.openClawAuthorizationSession.updateMany).toHaveBeenCalledWith({
       data: {
         rejectedAt: new Date("2026-03-31T03:10:00.000Z"),
         status: "rejected",
         updatedAt: new Date("2026-03-31T03:10:00.000Z")
       },
       where: {
+        expiresAt: {
+          gt: new Date("2026-03-31T03:10:00.000Z")
+        },
+        id: "auth_123",
+        status: "pending"
+      }
+    });
+    expect(prisma.openClawAuthorizationSession.findFirst).toHaveBeenCalledWith({
+      where: {
         id: "auth_123"
       }
     });
-    expect(rejected).toEqual(updatedRecord);
+    expect(rejected).toEqual({
+      applied: true,
+      session: updatedRecord
+    });
   });
 
   it("marks an OpenClaw authorization session as expired only while it is still pending or authorized", async () => {
@@ -224,9 +256,21 @@ describe("openclaw authorization session repository", () => {
   });
 
   it("atomically redeems a session while promoting the replacement api key", async () => {
-    prisma.$transaction.mockImplementation(async (callback: (tx: typeof prisma) => Promise<void>) => callback(prisma));
+    const redeemedRecord = createAuthorizationSessionRecord({
+      authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+      authorizedByUserId: "user_123",
+      organizationId: "org_123",
+      redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
+      status: "redeemed",
+      updatedAt: new Date("2026-03-31T03:11:00.000Z")
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionMutationResult>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(redeemedRecord);
 
-    await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
+    const redeemed = await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
       auditEvent: createAuditEventRecord({
         action: "openclaw_authorization.redeemed",
         actorType: "system",
@@ -259,12 +303,21 @@ describe("openclaw authorization session repository", () => {
         id: "key_new"
       }
     });
-    expect(prisma.openClawAuthorizationSession.update).toHaveBeenCalledWith({
+    expect(prisma.openClawAuthorizationSession.updateMany).toHaveBeenCalledWith({
       data: {
         redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
         status: "redeemed",
         updatedAt: new Date("2026-03-31T03:11:00.000Z")
       },
+      where: {
+        expiresAt: {
+          gt: new Date("2026-03-31T03:11:00.000Z")
+        },
+        id: "auth_123",
+        status: "authorized"
+      }
+    });
+    expect(prisma.openClawAuthorizationSession.findFirst).toHaveBeenCalledWith({
       where: {
         id: "auth_123"
       }
@@ -282,6 +335,53 @@ describe("openclaw authorization session repository", () => {
         },
         note: "OpenClaw authorization session was redeemed into a seller API key."
       })
+    });
+    expect(redeemed).toEqual({
+      applied: true,
+      session: redeemedRecord
+    });
+  });
+
+  it("returns the current session without rotating keys when redeem loses a race", async () => {
+    const expiredRecord = createAuthorizationSessionRecord({
+      expiredAt: new Date("2026-03-31T03:11:00.000Z"),
+      failureCode: "authorization_expired",
+      failureMessage: "OpenClaw authorization session expired before completion.",
+      organizationId: "org_123",
+      status: "expired",
+      updatedAt: new Date("2026-03-31T03:11:00.000Z")
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionMutationResult>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 0 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(expiredRecord);
+
+    const redeemed = await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
+      auditEvent: createAuditEventRecord({
+        action: "openclaw_authorization.redeemed",
+        actorType: "system",
+        actorUserId: null,
+        metadata: {
+          newApiKeyId: "key_new",
+          organizationId: "org_123",
+          replacedApiKeyId: "key_existing",
+          sessionStatus: "redeemed"
+        },
+        note: "OpenClaw authorization session was redeemed into a seller API key."
+      }),
+      newApiKeyId: "key_new",
+      previousApiKeyId: "key_existing",
+      redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
+      sessionId: "auth_123"
+    });
+
+    expect(prisma.apikey.delete).not.toHaveBeenCalled();
+    expect(prisma.apikey.update).not.toHaveBeenCalled();
+    expect(prisma.auditEvent.create).not.toHaveBeenCalled();
+    expect(redeemed).toEqual({
+      applied: false,
+      session: expiredRecord
     });
   });
 });
@@ -325,6 +425,11 @@ type AuthorizationSessionRecord = {
   rejectedAt: Date | null;
   status: "authorized" | "cancelled" | "expired" | "pending" | "redeemed" | "rejected";
   updatedAt: Date;
+};
+
+type AuthorizationSessionMutationResult = {
+  applied: boolean;
+  session: AuthorizationSessionRecord;
 };
 
 function createAuditEventRecord(overrides: Partial<AuditEventRecord> = {}) {
