@@ -13,6 +13,9 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/categories"]?.get).toBeDefined();
     expect(paths["/api/categories/{categorySlug}"]?.get).toBeDefined();
     expect(paths["/api/listings/{listingId}"]?.get).toBeDefined();
+    expect(paths["/api/openclaw/authorization-sessions"]?.post).toBeDefined();
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post).toBeDefined();
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post).toBeDefined();
     expect(paths["/api/seller/context"]?.get).toBeDefined();
     expect(paths["/api/seller/publishability"]?.get).toBeDefined();
     expect(paths["/api/seller/listings"]?.post).toBeDefined();

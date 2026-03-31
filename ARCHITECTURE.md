@@ -26,8 +26,9 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
   - Twitter/X sign-in
   - organization workspaces
   - organization-owned API keys for OpenClaw
-- Seller-specific data currently lives in eight custom marketplace tables:
+- Seller-specific data currently lives in nine custom marketplace tables:
   - `seller_account`
+  - `openclaw_authorization_session`
   - `audit_event`
   - `listing`
   - `listing_media`
@@ -43,10 +44,15 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 
 - Browser sellers sign in at `/sign-in`.
 - Seller workspace creation and selection live under `/seller/workspace`, with workspace activation handled through a server action instead of a mutating `GET` route.
-- Seller settings and OpenClaw authorization live under `/seller/settings`.
+- OpenClaw can start a short-lived browser handoff session that lands on `/seller/authorize/openclaw/:browserToken`.
+- Seller settings at `/seller/settings` still supports manual OpenClaw API key creation as a fallback path.
 - Seller request resolution is shared between browser sessions and `x-api-key` requests.
 - Development eligibility override is only available outside production, even when `DEV_SELLER_OVERRIDE_EMAILS` is set.
+- OpenClaw authorization sessions are persisted in Prisma with hashed browser tokens plus one-time exchange codes, terminal statuses, and a 15-minute TTL.
 - The first seller APIs are:
+  - `POST /api/openclaw/authorization-sessions`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/status`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/redeem`
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
   - `POST /api/seller/listings`

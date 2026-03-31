@@ -56,8 +56,9 @@ export function SellerSettingsControls({
         <div className="space-y-2">
           <h2 className="text-lg font-semibold text-stone-50">OpenClaw Authorization</h2>
           <p className="text-sm leading-6 text-stone-400">
-            Connect this seller workspace to OpenClaw with a CMD Market API key. After you create it, paste it into
-            OpenClaw to finish setup. For security, the full key is shown only once.
+            OpenClaw can now start the preferred browser handoff flow on its own. This page remains the manual fallback
+            if you need to create an OpenClaw API key directly in CMD Market. For security, the full key is shown only
+            once.
           </p>
         </div>
 

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { env } from "../../lib/env";
 import { getSellerWorkspacePageData } from "../../lib/seller/service";
+import { buildSellerReturnPath } from "../../lib/seller/workspace";
 import { SignInButton } from "./sign-in-button";
 
 export const metadata: Metadata = {
@@ -10,11 +11,18 @@ export const metadata: Metadata = {
   title: "Seller Sign In"
 };
 
-export default async function SignInPage() {
+export default async function SignInPage({
+  searchParams
+}: SignInPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const callbackUrl = buildSellerReturnPath(
+    typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : null,
+    "/seller/workspace"
+  );
   const workspaceData = await getSellerWorkspacePageData(await headers());
 
   if (workspaceData) {
-    redirect("/seller/workspace");
+    redirect(callbackUrl);
   }
 
   const twitterEnabled = Boolean(env.xClientId && env.xClientSecret);
@@ -30,8 +38,12 @@ export default async function SignInPage() {
             workspace settings.
           </p>
         </div>
-        <SignInButton twitterEnabled={twitterEnabled} />
+        <SignInButton callbackUrl={callbackUrl} twitterEnabled={twitterEnabled} />
       </div>
     </main>
   );
 }
+
+type SignInPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};

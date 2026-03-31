@@ -6,6 +6,7 @@ import { activateWorkspaceAction } from "./actions";
 export function WorkspaceActivationForm({
   autoSubmit = false,
   buttonLabel,
+  nextPath,
   organizationId
 }: WorkspaceActivationFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -18,6 +19,7 @@ export function WorkspaceActivationForm({
 
   return (
     <form action={activateWorkspaceAction} className="space-y-3" ref={formRef}>
+      <input name="next" type="hidden" value={nextPath} />
       <input name="organizationId" type="hidden" value={organizationId} />
       <button className={getButtonClassName(autoSubmit)} type="submit">
         {buttonLabel}
@@ -40,5 +42,6 @@ function getButtonClassName(autoSubmit: boolean) {
 type WorkspaceActivationFormProps = {
   autoSubmit?: boolean;
   buttonLabel: string;
+  nextPath: string;
   organizationId: string;
 };

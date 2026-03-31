@@ -79,6 +79,68 @@ export const sellerApiErrorBodySchema = z
     id: "SellerApiErrorResponse"
   });
 
+export const openClawAuthorizationSessionStatusSchema = z
+  .enum(["authorized", "cancelled", "expired", "pending", "redeemed", "rejected"])
+  .meta({
+    description: "Current state of an OpenClaw browser handoff authorization session.",
+    example: "pending",
+    id: "OpenClawAuthorizationSessionStatus"
+  });
+
+export const openClawAuthorizationExchangeRequestSchema = z
+  .object({
+    exchange_code: z.string().min(1)
+  })
+  .meta({
+    description: "One-time exchange code provided when the OpenClaw authorization session starts.",
+    id: "OpenClawAuthorizationExchangeRequest"
+  });
+
+export const openClawAuthorizationSessionCreateResponseSchema = z
+  .object({
+    data: z.object({
+      browser_url: z.string().url(),
+      exchange_code: z.string(),
+      expires_at: z.iso.datetime(),
+      session_id: z.string()
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session creation response.",
+    id: "OpenClawAuthorizationSessionCreateResponse"
+  });
+
+export const openClawAuthorizationSessionStatusResponseSchema = z
+  .object({
+    data: z.object({
+      expires_at: z.iso.datetime(),
+      session_id: z.string(),
+      status: openClawAuthorizationSessionStatusSchema
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session polling response.",
+    id: "OpenClawAuthorizationSessionStatusResponse"
+  });
+
+export const openClawAuthorizationSessionRedeemResponseSchema = z
+  .object({
+    data: z.object({
+      api_key: z.string(),
+      seller_context: z.object({
+        eligibility_source: sellerEligibilitySourceSchema,
+        eligibility_status: sellerEligibilityStatusSchema,
+        organization_id: z.string(),
+        seller_account_id: z.string()
+      }),
+      session_id: z.string()
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session redeem response.",
+    id: "OpenClawAuthorizationSessionRedeemResponse"
+  });
+
 export function serializeSellerApiErrorBody(result: {
   code: string;
   message: string;

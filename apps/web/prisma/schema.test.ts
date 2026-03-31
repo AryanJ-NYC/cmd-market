@@ -119,6 +119,43 @@ describe("prisma seller eligibility schema", () => {
     expect(migration).toContain("'grade'");
   });
 
+  it("defines OpenClaw authorization session status and persistence in the schema", () => {
+    const schema = readPrismaFile("schema.prisma");
+
+    expect(schema).toContain([
+      "enum OpenClawAuthorizationSessionStatus {",
+      "  pending",
+      "  authorized",
+      "  rejected",
+      "  cancelled",
+      "  expired",
+      "  redeemed",
+      "}",
+    ].join("\n"));
+    expect(schema).toContain("model openClawAuthorizationSession {");
+    expect(schema).toContain("browserTokenHash");
+    expect(schema).toContain('@map("browser_token_hash")');
+    expect(schema).toContain("exchangeCodeHash");
+    expect(schema).toContain('@map("exchange_code_hash")');
+    expect(schema).toContain("organizationId");
+    expect(schema).toContain("authorizedByUserId");
+    expect(schema).toContain("status             OpenClawAuthorizationSessionStatus");
+    expect(schema).toContain('@map("openclaw_authorization_session")');
+  });
+
+  it("creates OpenClaw authorization session enum and table in migrations", () => {
+    const migration = readAllMigrationSql();
+
+    expect(migration).toContain(
+      'CREATE TYPE "OpenClawAuthorizationSessionStatus" AS ENUM (\'pending\', \'authorized\', \'rejected\', \'cancelled\', \'expired\', \'redeemed\');'
+    );
+    expect(migration).toContain('CREATE TABLE "openclaw_authorization_session"');
+    expect(migration).toContain('"browser_token_hash" TEXT NOT NULL');
+    expect(migration).toContain('"exchange_code_hash" TEXT NOT NULL');
+    expect(migration).toContain('"organization_id" TEXT');
+    expect(migration).toContain('"authorized_by_user_id" TEXT');
+  });
+
 });
 
 function readPrismaFile(relativePath: string) {

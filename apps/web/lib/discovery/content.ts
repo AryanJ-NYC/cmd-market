@@ -4,6 +4,7 @@ export const discoverySummary =
 export const discoveryNotes = [
   "Use the public site to see how seller setup works and what is live today.",
   "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
+  "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff, not by scraping a long-lived key from settings.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
   "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and workspace selection."
@@ -44,13 +45,33 @@ export const sellerBrowserRoutes = [
     title: "Seller Workspace"
   },
   {
-    description: "Review seller status and create the OpenClaw API key for the active workspace.",
+    description: "Human approval screen for an OpenClaw-started browser handoff session.",
+    href: "/seller/authorize/openclaw/{browserToken}",
+    title: "OpenClaw Authorization Handoff"
+  },
+  {
+    description: "Review seller status and manually create the OpenClaw API key as a fallback path.",
     href: "/seller/settings",
     title: "Seller Settings"
   }
 ] as const satisfies RouteLink[];
 
 export const sellerApiRoutes = [
+  {
+    description: "Start a short-lived OpenClaw authorization session and return the browser handoff URL plus exchange code.",
+    href: "/api/openclaw/authorization-sessions",
+    title: "POST /api/openclaw/authorization-sessions"
+  },
+  {
+    description: "Poll the current state of an OpenClaw authorization session using the one-time exchange code.",
+    href: "/api/openclaw/authorization-sessions/{sessionId}/status",
+    title: "POST /api/openclaw/authorization-sessions/{sessionId}/status"
+  },
+  {
+    description: "Redeem an authorized OpenClaw authorization session into a seller-scoped API key.",
+    href: "/api/openclaw/authorization-sessions/{sessionId}/redeem",
+    title: "POST /api/openclaw/authorization-sessions/{sessionId}/redeem"
+  },
   {
     description: "Resolve the seller workspace and actor for the current browser session or seller API key.",
     href: "/api/seller/context",
@@ -117,7 +138,7 @@ export const sellerFlowSteps = [
     label: "Set up your seller workspace"
   },
   {
-    body: "Create an OpenClaw API key in settings when you want an agent to help with drafts, media, and publishing.",
+    body: "Prefer letting OpenClaw start the browser handoff flow. Seller settings still supports manual API key creation as a fallback.",
     label: "Connect OpenClaw"
   },
   {

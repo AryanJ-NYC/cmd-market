@@ -1,4 +1,5 @@
 export const OPENCLAW_API_KEY_CONFIG_ID = "openclaw";
+export const OPENCLAW_PENDING_ROTATION_API_KEY_CONFIG_ID = "openclaw_pending_rotation";
 export const OPENCLAW_API_KEY_NAME = "OpenClaw";
 export const OPENCLAW_API_KEY_PREFIX = "cmdmkt_";
 export const OPENCLAW_API_KEY_RATE_LIMIT_MAX_REQUESTS = 300;
@@ -64,6 +65,14 @@ export function buildOpenClawApiKeyRequest({
     prefix: OPENCLAW_API_KEY_PREFIX,
     metadata: { integration: "openclaw" }
   };
+}
+
+export function buildSellerReturnPath(candidatePath: string | null, fallbackPath: string) {
+  if (!candidatePath || !candidatePath.startsWith("/") || candidatePath.startsWith("//")) {
+    return fallbackPath;
+  }
+
+  return candidatePath;
 }
 
 export function shouldAutoSubmitWorkspaceActivation(error: string | null) {

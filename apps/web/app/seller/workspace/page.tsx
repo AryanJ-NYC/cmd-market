@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { createWorkspaceAction } from "./actions";
 import { WorkspaceActivationForm } from "./workspace-activation-form";
 import { getSellerWorkspacePageData } from "../../../lib/seller/service";
-import { shouldAutoSubmitWorkspaceActivation } from "../../../lib/seller/workspace";
+import {
+  buildSellerReturnPath,
+  shouldAutoSubmitWorkspaceActivation
+} from "../../../lib/seller/workspace";
 
 export const metadata: Metadata = {
   description: "Create, select, and activate your CMD Market seller workspace.",
@@ -15,13 +18,16 @@ export default async function SellerWorkspacePage({
   searchParams
 }: SellerWorkspacePageProps) {
   const workspaceData = await getSellerWorkspacePageData(await headers());
-
-  if (!workspaceData) {
-    redirect("/sign-in");
-  }
-
   const resolvedSearchParams = await searchParams;
   const error = typeof resolvedSearchParams.error === "string" ? resolvedSearchParams.error : null;
+  const nextPath = buildSellerReturnPath(
+    typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : null,
+    "/seller/settings"
+  );
+
+  if (!workspaceData) {
+    redirect(`/sign-in?next=${encodeURIComponent(nextPath)}`);
+  }
 
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-12 text-stone-100">
@@ -50,7 +56,8 @@ export default async function SellerWorkspacePage({
               </p>
               <WorkspaceActivationForm
                 autoSubmit={shouldAutoSubmitWorkspaceActivation(error)}
-                buttonLabel="Continue to Seller Settings"
+                buttonLabel={getWorkspaceActivationButtonLabel(nextPath)}
+                nextPath={nextPath}
                 organizationId={workspaceData.flow.organizationId}
               />
             </div>
@@ -58,6 +65,7 @@ export default async function SellerWorkspacePage({
         ) : workspaceData.organizations.length === 0 ? (
           <section className="rounded-3xl border border-stone-800 bg-stone-950/80 p-6">
             <form action={createWorkspaceAction} className="space-y-5">
+              <input name="next" type="hidden" value={nextPath} />
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-stone-200" htmlFor="workspace-name">
                   Workspace name
@@ -113,6 +121,7 @@ export default async function SellerWorkspacePage({
                     ) : null}
                     <WorkspaceActivationForm
                       buttonLabel={isActive ? "Refresh Selection" : "Use Workspace"}
+                      nextPath={nextPath}
                       organizationId={organization.id}
                     />
                   </div>
@@ -129,3 +138,11 @@ export default async function SellerWorkspacePage({
 type SellerWorkspacePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function getWorkspaceActivationButtonLabel(nextPath: string) {
+  if (nextPath.startsWith("/seller/authorize/openclaw/")) {
+    return "Continue to OpenClaw Authorization";
+  }
+
+  return "Continue to Seller Settings";
+}

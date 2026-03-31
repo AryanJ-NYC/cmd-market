@@ -3,9 +3,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { activateSellerWorkspace, createSellerWorkspace } from "../../../lib/seller/service";
+import { buildSellerReturnPath } from "../../../lib/seller/workspace";
 
 export async function createWorkspaceAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
+  const nextPath = getNextPath(formData);
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
 
   if (!name || !slug) {
@@ -22,10 +24,11 @@ export async function createWorkspaceAction(formData: FormData) {
     redirect(`/seller/workspace?error=${encodeURIComponent(getActionErrorMessage(caughtError))}`);
   }
 
-  redirect("/seller/settings");
+  redirect(nextPath);
 }
 
 export async function activateWorkspaceAction(formData: FormData) {
+  const nextPath = getNextPath(formData);
   const organizationId = String(formData.get("organizationId") ?? "").trim();
 
   if (!organizationId) {
@@ -38,7 +41,7 @@ export async function activateWorkspaceAction(formData: FormData) {
     redirect(`/seller/workspace?error=${encodeURIComponent(getActionErrorMessage(caughtError))}`);
   }
 
-  redirect("/seller/settings");
+  redirect(nextPath);
 }
 
 function getActionErrorMessage(error: unknown) {
@@ -51,4 +54,10 @@ function getActionErrorMessage(error: unknown) {
 
 function isValidSlug(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+function getNextPath(formData: FormData) {
+  const nextValue = String(formData.get("next") ?? "").trim();
+
+  return buildSellerReturnPath(nextValue || null, "/seller/settings");
 }

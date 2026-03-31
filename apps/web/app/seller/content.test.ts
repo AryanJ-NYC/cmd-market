@@ -10,7 +10,7 @@ describe("seller entry content", () => {
       "/seller/settings"
     ]);
     expect(sellerEntryContent.boundaryNote).toBe(
-      "Start here in the browser. Once your workspace is ready, you can add an API key so OpenClaw can help with drafts and publishing."
+      "Start here in the browser. OpenClaw can now launch the preferred browser handoff flow, and seller settings remains the manual fallback if you ever need to mint a key directly."
     );
   });
 });

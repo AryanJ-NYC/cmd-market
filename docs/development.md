@@ -53,6 +53,9 @@
 
 - BetterAuth is mounted at `/api/auth/*`.
 - Seller APIs live at:
+  - `POST /api/openclaw/authorization-sessions`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/status`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/redeem`
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
   - `POST /api/seller/listings`
@@ -69,12 +72,14 @@
   - `/seller`
   - `/sign-in`
   - `/seller/workspace`
+  - `/seller/authorize/openclaw/:browserToken`
   - `/seller/settings`
 - Public discovery entry points live at:
   - `/`
   - `/llms.txt`
   - `/openapi.json`
 - OpenClaw authorization is currently limited to one organization-owned API key per seller workspace.
+- The preferred OpenClaw bootstrap is the browser handoff flow. `/seller/settings` remains the manual fallback for creating an API key directly in CMD Market.
 - Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
 - Seller API keys authenticate seller API routes only. Browser seller UI still requires a browser session.
 - Draft upload sessions are listing-scoped and currently expect a `listing_id` plus image file descriptors.
@@ -93,6 +98,34 @@
 - The Prisma client is regenerated on install through the root `postinstall` hook, and can be regenerated manually with `pnpm db:generate`.
 - Vercel runs `pnpm vercel-build`, which applies `prisma migrate deploy` before `pnpm build`.
 - If an older local PostgreSQL volume reports Prisma drift from pre-reset seller-account migrations, reset that local dev database once with `pnpm db:stop`, then `pnpm db:start`, then rerun `pnpm db:migrate`.
+
+## OpenClaw Browser Handoff
+
+1. Start an authorization session from OpenClaw:
+   ```bash
+   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions
+   ```
+   CMD Market returns a `browser_url`, `exchange_code`, `session_id`, and `expires_at`.
+2. Open the returned `browser_url` in a browser.
+3. Complete browser sign-in and workspace create/select if needed.
+4. Approve or reject the consent screen at `/seller/authorize/openclaw/:browserToken`.
+5. Poll the session from OpenClaw:
+   ```bash
+   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/status \
+     -H "content-type: application/json" \
+     -d '{
+       "exchange_code": "exchange_secret"
+     }'
+   ```
+6. Redeem the authorized session into the seller-scoped API key:
+   ```bash
+   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/redeem \
+     -H "content-type: application/json" \
+     -d '{
+       "exchange_code": "exchange_secret"
+     }'
+   ```
+7. Use the returned `api_key` against seller routes such as `GET /api/seller/context`.
 
 ## Listing Authoring API Flow
 
