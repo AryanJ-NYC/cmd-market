@@ -9,7 +9,6 @@ describe("buildOpenApiDocument", () => {
     expect(document.openapi).toBe("3.1.0");
     expect(document.info.title).toBe("CMD Market API");
     expect(document.components?.securitySchemes?.browserSession).toBeDefined();
-    expect(document.components?.securitySchemes?.openClawClientBearer).toBeDefined();
     expect(document.components?.securitySchemes?.sellerApiKey).toBeDefined();
     expect(paths["/api/categories"]?.get).toBeDefined();
     expect(paths["/api/categories/{categorySlug}"]?.get).toBeDefined();
@@ -28,7 +27,7 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/upload-sessions"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/media"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/publish"]?.post?.responses?.["422"]).toBeDefined();
-    expect(getRequestBodyRequired(paths["/api/openclaw/authorization-sessions"]?.post?.requestBody)).toBe(false);
+    expect(getRequestBodyRequired(paths["/api/openclaw/authorization-sessions"]?.post?.requestBody)).toBe(true);
     expect(getRequestBodyRequired(paths["/api/seller/upload-sessions"]?.post?.requestBody)).toBe(true);
     expect(getRequestBodyRequired(paths["/api/seller/listings/{listingId}/media"]?.post?.requestBody)).toBe(
       true
@@ -50,24 +49,27 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/context"]?.get?.description).toContain(
       "API keys do not authenticate browser `/seller/*` routes."
     );
-    expect(paths["/api/openclaw/authorization-sessions"]?.post?.security).toEqual([
-      { openClawClientBearer: [] }
-    ]);
-    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post?.security).toEqual([
-      { openClawClientBearer: [] }
-    ]);
-    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post?.security).toEqual([
-      { openClawClientBearer: [] }
-    ]);
+    expect(paths["/api/openclaw/authorization-sessions"]?.post?.security).toBeUndefined();
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post?.security).toBeUndefined();
+    expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post?.security).toBeUndefined();
     expect(document.components?.schemas?.OpenClawAuthorizationSessionCreateRequest).toMatchObject({
       properties: {
+        code_challenge: expect.any(Object),
+        code_challenge_method: expect.any(Object),
         proposed_workspace: {
           properties: {
             name: expect.any(Object),
             slug: expect.any(Object)
           }
         }
-      }
+      },
+      required: ["code_challenge", "code_challenge_method"]
+    });
+    expect(document.components?.schemas?.OpenClawAuthorizationSessionVerifierRequest).toMatchObject({
+      properties: {
+        code_verifier: expect.any(Object)
+      },
+      required: ["code_verifier"]
     });
   });
 });

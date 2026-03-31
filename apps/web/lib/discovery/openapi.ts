@@ -21,11 +21,11 @@ import {
   uploadSessionsResponseSchema
 } from "../listing/http";
 import {
-  openClawAuthorizationExchangeRequestSchema,
   openClawAuthorizationSessionCreateRequestSchema,
   openClawAuthorizationSessionCreateResponseSchema,
   openClawAuthorizationSessionRedeemResponseSchema,
   openClawAuthorizationSessionStatusResponseSchema,
+  openClawAuthorizationSessionVerifierRequestSchema,
   sellerApiErrorBodySchema,
   sellerContextResponseSchema,
   sellerPublishabilityResponseSchema
@@ -79,13 +79,6 @@ export function buildOpenApiDocument() {
           name: "better-auth.session_token",
           type: "apiKey"
         },
-        openClawClientBearer: {
-          bearerFormat: "OpenClaw client secret",
-          description:
-            "Shared client secret sent as `Authorization: Bearer <openclaw-client-secret>` for OpenClaw authorization-session routes.",
-          scheme: "bearer",
-          type: "http"
-        },
         sellerApiKey: {
           description:
             "Seller-scoped API key sent in the `x-api-key` header for `/api/seller/*` requests. API keys do not authenticate browser `/seller/*` routes.",
@@ -97,7 +90,7 @@ export function buildOpenApiDocument() {
     },
     info: {
       description:
-        "Current OpenAPI description for the implemented CMD Market public and seller API routes. This document is intentionally narrow and does not describe planned marketplace routes that are not live yet.",
+        "Current OpenAPI description for the implemented CMD Market public and seller API routes. CMD Market is built to support many agent clients over time; OpenClaw is the first implemented browser handoff integration described here. This document is intentionally narrow and does not describe planned marketplace routes that are not live yet.",
       title: "CMD Market API",
       version: openApiVersion
     },
@@ -157,12 +150,12 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions": {
         post: {
           description:
-            "Starts a short-lived OpenClaw browser handoff authorization session and returns the browser URL plus one-time exchange code. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+            "Starts a short-lived OpenClaw browser handoff authorization session for a public client instance and returns the browser URL. The request includes a PKCE code challenge and optional proposed first-workspace details.",
           requestBody: jsonRequestBody(
             openClawAuthorizationSessionCreateRequestSchema,
-            "Optional proposed first-workspace details to prefill during the OpenClaw browser handoff."
+            "PKCE code challenge for the initiating OpenClaw client instance, plus optional proposed first-workspace details to prefill during the browser handoff.",
+            true
           ),
-          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: createOpenClawAuthorizationSessionRoute.description,
@@ -175,10 +168,10 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions/{sessionId}/status": {
         post: {
           description:
-            "Polls the current state of an OpenClaw browser handoff authorization session using the one-time exchange code. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+            "Polls the current state of an OpenClaw browser handoff authorization session using the PKCE code verifier from the same client instance that started it.",
           requestBody: jsonRequestBody(
-            openClawAuthorizationExchangeRequestSchema,
-            "One-time exchange code for the OpenClaw authorization session.",
+            openClawAuthorizationSessionVerifierRequestSchema,
+            "PKCE code verifier for the OpenClaw authorization session.",
             true
           ),
           requestParams: {
@@ -189,7 +182,6 @@ export function buildOpenApiDocument() {
               })
             })
           },
-          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: openClawAuthorizationSessionStatusRoute.description,
@@ -202,10 +194,10 @@ export function buildOpenApiDocument() {
       "/api/openclaw/authorization-sessions/{sessionId}/redeem": {
         post: {
           description:
-            "Redeems an authorized OpenClaw browser handoff authorization session into a seller-scoped API key. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+            "Redeems an authorized OpenClaw browser handoff authorization session into a seller-scoped API key using the PKCE code verifier from the same client instance that started it.",
           requestBody: jsonRequestBody(
-            openClawAuthorizationExchangeRequestSchema,
-            "One-time exchange code for the OpenClaw authorization session.",
+            openClawAuthorizationSessionVerifierRequestSchema,
+            "PKCE code verifier for the OpenClaw authorization session.",
             true
           ),
           requestParams: {
@@ -216,7 +208,6 @@ export function buildOpenApiDocument() {
               })
             })
           },
-          security: [{ openClawClientBearer: [] }],
           responses: sellerResponses({
             success: {
               description: openClawAuthorizationSessionRedeemRoute.description,

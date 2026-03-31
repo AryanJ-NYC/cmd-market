@@ -51,21 +51,17 @@ describe("openclaw authorization session repository", () => {
     expect(created).toEqual(record);
   });
 
-  it("finds an OpenClaw authorization session by id and exchange-code hash", async () => {
+  it("finds an OpenClaw authorization session by id", async () => {
     const record = createAuthorizationSessionRecord({
-      exchangeCodeHash: "exchange_hash",
+      codeChallenge: "challenge_value",
       id: "auth_123"
     });
     prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(record);
 
-    const found = await openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash(
-      "auth_123",
-      "exchange_hash"
-    );
+    const found = await openClawAuthorizationSessionRepository.findSessionById("auth_123");
 
     expect(prisma.openClawAuthorizationSession.findFirst).toHaveBeenCalledWith({
       where: {
-        exchangeCodeHash: "exchange_hash",
         id: "auth_123"
       }
     });
@@ -392,8 +388,9 @@ function createAuthorizationSessionRecord(overrides: Partial<AuthorizationSessio
     authorizedByUserId: null,
     browserTokenHash: "browser_hash",
     cancelledAt: null,
+    codeChallenge: "challenge_value",
+    codeChallengeMethod: "S256",
     createdAt: new Date("2026-03-31T03:05:00.000Z"),
-    exchangeCodeHash: "exchange_hash",
     expiredAt: null,
     expiresAt: new Date("2026-03-31T03:20:00.000Z"),
     failureCode: null,
@@ -415,8 +412,9 @@ type AuthorizationSessionRecord = {
   authorizedByUserId: string | null;
   browserTokenHash: string;
   cancelledAt: Date | null;
+  codeChallenge: string;
+  codeChallengeMethod: "S256";
   createdAt: Date;
-  exchangeCodeHash: string;
   expiredAt: Date | null;
   expiresAt: Date;
   failureCode: string | null;

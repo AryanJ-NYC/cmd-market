@@ -1,29 +1,20 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import {
   createSellerApiErrorResponse,
   parseSellerApiRequestBody
 } from "../../../../../../lib/seller/api";
 import { SellerDomainError } from "../../../../../../lib/seller/domain";
-import { requireOpenClawClientAuthorization } from "../../../../../../lib/seller/openclaw-client-auth";
+import { openClawAuthorizationSessionVerifierRequestSchema } from "../../../../../../lib/seller/http";
 import { getOpenClawAuthorizationSessionStatus } from "../../../../../../lib/seller/service";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
-  const unauthorizedResponse = requireOpenClawClientAuthorization(request);
-
-  if (unauthorizedResponse) {
-    return unauthorizedResponse;
-  }
-
   const parsed = await parseSellerApiRequestBody(
     request,
-    z.object({
-      exchange_code: z.string().trim().min(1)
-    }),
-    "Request body must include a valid exchange_code."
+    openClawAuthorizationSessionVerifierRequestSchema,
+    "Request body must include a valid code_verifier."
   );
 
   if (!parsed.ok) {
@@ -34,7 +25,7 @@ export async function POST(
 
   try {
     const result = await getOpenClawAuthorizationSessionStatus({
-      exchangeCode: parsed.data.exchange_code,
+      codeVerifier: parsed.data.code_verifier,
       sessionId: resolvedParams.sessionId
     });
 

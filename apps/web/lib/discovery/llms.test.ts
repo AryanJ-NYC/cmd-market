@@ -16,8 +16,10 @@ describe("buildLlmsText", () => {
     expect(llms).toContain("Browser `/seller/*` routes require a browser session.");
     expect(llms).toContain("API keys authenticate seller API routes only.");
     expect(llms).toContain(
-      "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff"
+      "CMD Market is built to support many agent clients"
     );
+    expect(llms).toContain("OpenClaw is the first implemented browser handoff integration today.");
+    expect(llms).toContain("PKCE-style verifier flow");
     expect(llms).toContain(
       "[Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md)"
     );

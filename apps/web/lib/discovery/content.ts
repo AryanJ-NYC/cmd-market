@@ -1,11 +1,12 @@
 export const discoverySummary =
-  "CMD Market is a Scarce City marketplace for physical goods, built for buying and selling with agents.";
+  "CMD Market is a Scarce City marketplace for physical goods, built to support buying and selling with many agent clients.";
 
 export const discoveryNotes = [
   "Use the public site to see how seller setup works and what is live today.",
   "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
+  "CMD Market is built to support many agent clients over time, even though OpenClaw is the first implemented browser handoff integration today.",
   "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff, not by scraping a long-lived key from settings.",
-  "OpenClaw authorization-session API routes require `Authorization: Bearer <openclaw-client-secret>` in addition to the session exchange code.",
+  "The OpenClaw authorization-session API now uses a PKCE-style verifier flow for public clients instead of a shared client secret.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
   "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection."
@@ -59,17 +60,20 @@ export const sellerBrowserRoutes = [
 
 export const sellerApiRoutes = [
   {
-    description: "Start a short-lived OpenClaw authorization session and return the browser handoff URL plus exchange code, with optional proposed first-workspace details. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+    description:
+      "Start a short-lived OpenClaw authorization session for the current client instance and return the browser handoff URL, with optional proposed first-workspace details and a PKCE code challenge.",
     href: "/api/openclaw/authorization-sessions",
     title: "POST /api/openclaw/authorization-sessions"
   },
   {
-    description: "Poll the current state of an OpenClaw authorization session using the one-time exchange code. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+    description:
+      "Poll the current state of an OpenClaw authorization session using the matching PKCE code verifier from the client instance that started it.",
     href: "/api/openclaw/authorization-sessions/{sessionId}/status",
     title: "POST /api/openclaw/authorization-sessions/{sessionId}/status"
   },
   {
-    description: "Redeem an authorized OpenClaw authorization session into a seller-scoped API key. Requires `Authorization: Bearer <openclaw-client-secret>`.",
+    description:
+      "Redeem an authorized OpenClaw authorization session into a seller-scoped API key using the matching PKCE code verifier from the client instance that started it.",
     href: "/api/openclaw/authorization-sessions/{sessionId}/redeem",
     title: "POST /api/openclaw/authorization-sessions/{sessionId}/redeem"
   },
@@ -139,8 +143,8 @@ export const sellerFlowSteps = [
     label: "Set up your seller workspace"
   },
   {
-    body: "Prefer letting OpenClaw start the browser handoff flow. Seller settings still supports manual API key creation as a fallback.",
-    label: "Connect OpenClaw"
+    body: "Prefer letting your agent start the browser handoff flow. OpenClaw is the first implemented integration today, and seller settings still supports manual OpenClaw key creation as a fallback.",
+    label: "Connect your agent"
   },
   {
     body: "Once setup is done, your agent can help with the repetitive parts while you stay in control of what gets published.",
@@ -176,7 +180,7 @@ export const repoDocs = [
   }
 ] as const satisfies RouteLink[];
 
-export const openApiVersion = "0.2.2";
+export const openApiVersion = "0.3.0";
 
 export function rawGitHubUrl(path: string) {
   return `https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/${path}`;

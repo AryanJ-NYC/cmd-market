@@ -42,10 +42,9 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
     const response = await POST(
       new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
         body: JSON.stringify({
-          exchange_code: "exchange_secret"
+          code_verifier: "openclaw-public-client-code-verifier-123456789"
         }),
         headers: {
-          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -58,7 +57,7 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
     );
 
     expect(redeemOpenClawAuthorizationSession).toHaveBeenCalledWith({
-      exchangeCode: "exchange_secret",
+      codeVerifier: "openclaw-public-client-code-verifier-123456789",
       sessionId: "auth_123"
     });
     expect(response.status).toBe(200);
@@ -72,44 +71,6 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
           seller_account_id: "seller_123"
         },
         session_id: "auth_123"
-      }
-    });
-  });
-
-  it("returns unauthorized when the OpenClaw client secret is missing", async () => {
-    const routePath = new URL("./route.ts", import.meta.url);
-
-    expect(existsSync(routePath)).toBe(true);
-
-    if (!existsSync(routePath)) {
-      return;
-    }
-
-    const { POST } = await import("./route");
-    const response = await POST(
-      new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
-        body: JSON.stringify({
-          exchange_code: "exchange_secret"
-        }),
-        headers: {
-          "content-type": "application/json"
-        },
-        method: "POST"
-      }),
-      {
-        params: Promise.resolve({
-          sessionId: "auth_123"
-        })
-      }
-    );
-
-    expect(redeemOpenClawAuthorizationSession).not.toHaveBeenCalled();
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({
-      error: {
-        code: "unauthorized",
-        message: "Valid OpenClaw client authorization is required.",
-        retryAfterMs: null
       }
     });
   });
@@ -131,10 +92,9 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
     const response = await POST(
       new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
         body: JSON.stringify({
-          exchange_code: "exchange_secret"
+          code_verifier: "openclaw-public-client-code-verifier-123456789"
         }),
         headers: {
-          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -170,7 +130,6 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
       new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
         body: "{not-json",
         headers: {
-          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -187,7 +146,45 @@ describe("POST /api/openclaw/authorization-sessions/[sessionId]/redeem", () => {
     await expect(response.json()).resolves.toEqual({
       error: {
         code: "invalid_request",
-        message: "Request body must include a valid exchange_code.",
+        message: "Request body must include a valid code_verifier.",
+        retryAfterMs: null
+      }
+    });
+  });
+
+  it("returns invalid_request when the redeem request body includes an oversized verifier", async () => {
+    const routePath = new URL("./route.ts", import.meta.url);
+
+    expect(existsSync(routePath)).toBe(true);
+
+    if (!existsSync(routePath)) {
+      return;
+    }
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("https://cmd.market/api/openclaw/authorization-sessions/auth_123/redeem", {
+        body: JSON.stringify({
+          code_verifier: "a".repeat(129)
+        }),
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST"
+      }),
+      {
+        params: Promise.resolve({
+          sessionId: "auth_123"
+        })
+      }
+    );
+
+    expect(redeemOpenClawAuthorizationSession).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "invalid_request",
+        message: "Request body must include a valid code_verifier.",
         retryAfterMs: null
       }
     });

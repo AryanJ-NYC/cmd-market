@@ -18,8 +18,9 @@ export class PrismaOpenClawAuthorizationSessionRepository {
         authorizedByUserId: record.authorizedByUserId,
         browserTokenHash: record.browserTokenHash,
         cancelledAt: record.cancelledAt,
+        codeChallenge: record.codeChallenge,
+        codeChallengeMethod: record.codeChallengeMethod,
         createdAt: record.createdAt,
-        exchangeCodeHash: record.exchangeCodeHash,
         expiredAt: record.expiredAt,
         expiresAt: record.expiresAt,
         failureCode: record.failureCode,
@@ -87,10 +88,9 @@ export class PrismaOpenClawAuthorizationSessionRepository {
     return session ? mapOpenClawAuthorizationSessionModel(session) : null;
   }
 
-  async findSessionByIdAndExchangeCodeHash(id: string, exchangeCodeHash: string) {
+  async findSessionById(id: string) {
     const session = await this.database.openClawAuthorizationSession.findFirst({
       where: {
-        exchangeCodeHash,
         id
       }
     });
@@ -309,8 +309,9 @@ function mapOpenClawAuthorizationSessionModel(
     authorizedByUserId: record.authorizedByUserId,
     browserTokenHash: record.browserTokenHash,
     cancelledAt: record.cancelledAt,
+    codeChallenge: record.codeChallenge,
+    codeChallengeMethod: record.codeChallengeMethod as OpenClawAuthorizationSessionRecord["codeChallengeMethod"],
     createdAt: record.createdAt,
-    exchangeCodeHash: record.exchangeCodeHash,
     expiredAt: record.expiredAt,
     expiresAt: record.expiresAt,
     failureCode: record.failureCode,
@@ -331,8 +332,9 @@ export type OpenClawAuthorizationSessionRecord = {
   authorizedByUserId: string | null;
   browserTokenHash: string;
   cancelledAt: Date | null;
+  codeChallenge: string;
+  codeChallengeMethod: "S256";
   createdAt: Date;
-  exchangeCodeHash: string;
   expiredAt: Date | null;
   expiresAt: Date;
   failureCode: string | null;

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   SellerEligibilitySource as PrismaSellerEligibilitySource,
   SellerEligibilityStatus as PrismaSellerEligibilityStatus
@@ -21,12 +22,11 @@ const { authApi, createMarketplaceId, openClawAuthorizationSessionRepository, se
     deleteApiKeyById: vi.fn(),
     findApiKeyByOrganizationId: vi.fn(),
     findSessionByBrowserTokenHash: vi.fn(),
-    findSessionByIdAndExchangeCodeHash: vi.fn(),
+    findSessionById: vi.fn(),
     markAuthorized: vi.fn(),
     markCancelled: vi.fn(),
     markExpired: vi.fn(),
     markRejected: vi.fn(),
-    markRedeemed: vi.fn(),
     redeemSessionWithApiKeyRotation: vi.fn()
   },
   sellerAccountRepository: {
@@ -91,12 +91,11 @@ describe("seller service", () => {
     openClawAuthorizationSessionRepository.deleteApiKeyById.mockReset();
     openClawAuthorizationSessionRepository.findApiKeyByOrganizationId.mockReset();
     openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockReset();
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockReset();
+    openClawAuthorizationSessionRepository.findSessionById.mockReset();
     openClawAuthorizationSessionRepository.markAuthorized.mockReset();
     openClawAuthorizationSessionRepository.markCancelled.mockReset();
     openClawAuthorizationSessionRepository.markExpired.mockReset();
     openClawAuthorizationSessionRepository.markRejected.mockReset();
-    openClawAuthorizationSessionRepository.markRedeemed.mockReset();
     openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation.mockReset();
     sellerAccountRepository.applyDevelopmentEligibilityOverride.mockReset();
     sellerAccountRepository.createIfMissing.mockReset();
@@ -157,7 +156,7 @@ describe("seller service", () => {
     openClawAuthorizationSessionRepository.createSession.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
         expiresAt: new Date("2026-03-31T03:20:00.000Z"),
         id: "auth_123"
       })
@@ -171,7 +170,11 @@ describe("seller service", () => {
     const result = await sellerService.createOpenClawAuthorizationSession(
       new Request("https://cmd.market/api/openclaw/authorization-sessions", {
         method: "POST"
-      })
+      }),
+      {
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
+        codeChallengeMethod: "S256"
+      }
     );
 
     expect(result).toEqual({
@@ -179,7 +182,6 @@ describe("seller service", () => {
         browserUrl: expect.stringMatching(
           /^https:\/\/cmd\.market\/seller\/authorize\/openclaw\/[A-Za-z0-9_-]+$/
         ),
-        exchangeCode: expect.any(String),
         expiresAt: "2026-03-31T03:20:00.000Z",
         sessionId: "auth_123"
       },
@@ -188,7 +190,8 @@ describe("seller service", () => {
     expect(openClawAuthorizationSessionRepository.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
         browserTokenHash: expect.any(String),
-        exchangeCodeHash: expect.any(String),
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
+        codeChallengeMethod: "S256",
         expiresAt: expect.any(Date),
         id: "auth_123",
         proposedWorkspaceName: "OpenClaw Seller Studio",
@@ -203,7 +206,7 @@ describe("seller service", () => {
     openClawAuthorizationSessionRepository.createSession.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
         expiresAt: new Date("2026-03-31T03:20:00.000Z"),
         id: "auth_123",
         proposedWorkspaceName: "Custom Seller Studio",
@@ -216,12 +219,18 @@ describe("seller service", () => {
         method: "POST"
       }),
       {
-        name: "Custom Seller Studio"
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
+        codeChallengeMethod: "S256",
+        proposedWorkspace: {
+          name: "Custom Seller Studio"
+        }
       }
     );
 
     expect(openClawAuthorizationSessionRepository.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
+        codeChallengeMethod: "S256",
         id: "auth_123",
         proposedWorkspaceName: "Custom Seller Studio",
         proposedWorkspaceSlug: "openclaw-seller-studio"
@@ -232,7 +241,6 @@ describe("seller service", () => {
         browserUrl: expect.stringMatching(
           /^https:\/\/cmd\.market\/seller\/authorize\/openclaw\/[A-Za-z0-9_-]+$/
         ),
-        exchangeCode: expect.any(String),
         expiresAt: "2026-03-31T03:20:00.000Z",
         sessionId: "auth_123"
       },
@@ -241,10 +249,10 @@ describe("seller service", () => {
   });
 
   it("returns pending while an OpenClaw authorization session is waiting for consent", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
         id: "auth_123",
         status: "pending"
       })
@@ -256,7 +264,7 @@ describe("seller service", () => {
     }
 
     const result = await sellerService.getOpenClawAuthorizationSessionStatus({
-      exchangeCode: "exchange_secret",
+      codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
       sessionId: "auth_123"
     });
 
@@ -270,11 +278,32 @@ describe("seller service", () => {
     });
   });
 
-  it("marks a stale OpenClaw authorization session as expired during polling", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+  it("rejects polling when the PKCE verifier does not match the session challenge", async () => {
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
+        id: "auth_123",
+        status: "pending"
+      })
+    );
+
+    await expect(
+      sellerService.getOpenClawAuthorizationSessionStatus({
+        codeVerifier: "different-openclaw-public-client-code-verifier",
+        sessionId: "auth_123"
+      })
+    ).rejects.toMatchObject({
+      code: "unauthorized_exchange",
+      message: "OpenClaw authorization verifier is invalid."
+    });
+  });
+
+  it("marks a stale OpenClaw authorization session as expired during polling", async () => {
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
         expiresAt: new Date("2000-01-01T00:00:00.000Z"),
         id: "auth_123",
         status: "pending"
@@ -283,7 +312,7 @@ describe("seller service", () => {
     openClawAuthorizationSessionRepository.markExpired.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
-        exchangeCodeHash: "exchange_hash",
+        codeChallenge: createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER),
         expiredAt: new Date("2000-01-01T00:00:01.000Z"),
         expiresAt: new Date("2000-01-01T00:00:00.000Z"),
         failureCode: "authorization_expired",
@@ -294,7 +323,7 @@ describe("seller service", () => {
     );
 
     const result = await sellerService.getOpenClawAuthorizationSessionStatus({
-      exchangeCode: "exchange_secret",
+      codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
       sessionId: "auth_123"
     });
 
@@ -617,7 +646,7 @@ describe("seller service", () => {
   });
 
   it("redeems an authorized OpenClaw authorization session by rotating the existing OpenClaw key", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -663,7 +692,7 @@ describe("seller service", () => {
     }
 
     const result = await sellerService.redeemOpenClawAuthorizationSession({
-      exchangeCode: "exchange_secret",
+      codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
       sessionId: "auth_123"
     });
 
@@ -718,7 +747,7 @@ describe("seller service", () => {
   });
 
   it("does not delete the current OpenClaw key if redeem cannot mint a replacement", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -742,7 +771,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toThrow("failed to create api key");
@@ -752,7 +781,7 @@ describe("seller service", () => {
   });
 
   it("returns authorization_pending when staged-key creation races with another redeem", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash
+    openClawAuthorizationSessionRepository.findSessionById
       .mockResolvedValueOnce(
         createOpenClawAuthorizationSessionRecord({
           authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
@@ -794,7 +823,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toMatchObject({
@@ -807,7 +836,7 @@ describe("seller service", () => {
   });
 
   it("cleans up the temporary OpenClaw key if redeem fails after key creation", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -837,7 +866,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toThrow("rotation transaction failed");
@@ -846,7 +875,7 @@ describe("seller service", () => {
   });
 
   it("returns authorization_redeemed when key promotion races with another issued OpenClaw key", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash
+    openClawAuthorizationSessionRepository.findSessionById
       .mockResolvedValueOnce(
         createOpenClawAuthorizationSessionRecord({
           authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
@@ -894,7 +923,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toMatchObject({
@@ -907,7 +936,7 @@ describe("seller service", () => {
   });
 
   it("cleans up the staged OpenClaw key and returns a terminal error when redeem loses the race", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -948,7 +977,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toMatchObject({
@@ -961,7 +990,7 @@ describe("seller service", () => {
   });
 
   it("surfaces cleanup failures when staged-key rollback also fails", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
         authorizedByUserId: "user_123",
@@ -994,7 +1023,7 @@ describe("seller service", () => {
 
     try {
       await sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       });
     } catch (error) {
@@ -1012,7 +1041,7 @@ describe("seller service", () => {
   });
 
   it("returns a terminal rejected error when OpenClaw tries to redeem a rejected session", async () => {
-    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
+    openClawAuthorizationSessionRepository.findSessionById.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({
         browserTokenHash: "browser_hash",
         exchangeCodeHash: "exchange_hash",
@@ -1024,7 +1053,7 @@ describe("seller service", () => {
 
     await expect(
       sellerService.redeemOpenClawAuthorizationSession({
-        exchangeCode: "exchange_secret",
+        codeVerifier: DEFAULT_OPENCLAW_CODE_VERIFIER,
         sessionId: "auth_123"
       })
     ).rejects.toMatchObject({
@@ -1638,24 +1667,28 @@ function createSellerAccount(overrides: Partial<SellerAccountLike>) {
 }
 
 function createOpenClawAuthorizationSessionRecord(
-  overrides: Partial<OpenClawAuthorizationSessionRecord> & Pick<
-    OpenClawAuthorizationSessionRecord,
-    "browserTokenHash" | "exchangeCodeHash"
-  >
+  overrides: Partial<OpenClawAuthorizationSessionRecord> & {
+    browserTokenHash: string;
+    codeChallenge?: string;
+    exchangeCodeHash?: string;
+  }
 ) {
   const {
     browserTokenHash,
-    exchangeCodeHash,
+    codeChallenge,
+    exchangeCodeHash: _exchangeCodeHash,
     ...restOverrides
   } = overrides;
+  void _exchangeCodeHash;
 
   return {
     authorizedAt: null,
     authorizedByUserId: null,
     browserTokenHash,
     cancelledAt: null,
+    codeChallenge: codeChallenge ?? DEFAULT_OPENCLAW_CODE_CHALLENGE,
+    codeChallengeMethod: "S256",
     createdAt: new Date("2026-03-31T03:05:00.000Z"),
-    exchangeCodeHash,
     expiredAt: null,
     expiresAt: new Date("2099-03-31T03:20:00.000Z"),
     failureCode: null,
@@ -1689,8 +1722,9 @@ type OpenClawAuthorizationSessionRecord = {
   authorizedByUserId: string | null;
   browserTokenHash: string;
   cancelledAt: Date | null;
+  codeChallenge: string;
+  codeChallengeMethod: "S256";
   createdAt: Date;
-  exchangeCodeHash: string;
   expiredAt: Date | null;
   expiresAt: Date;
   failureCode: string | null;
@@ -1704,3 +1738,10 @@ type OpenClawAuthorizationSessionRecord = {
   status: "authorized" | "cancelled" | "expired" | "pending" | "redeemed" | "rejected";
   updatedAt: Date;
 };
+
+const DEFAULT_OPENCLAW_CODE_VERIFIER = "openclaw-public-client-code-verifier-123456789";
+const DEFAULT_OPENCLAW_CODE_CHALLENGE = createCodeChallenge(DEFAULT_OPENCLAW_CODE_VERIFIER);
+
+function createCodeChallenge(codeVerifier: string) {
+  return createHash("sha256").update(codeVerifier).digest("base64url");
+}

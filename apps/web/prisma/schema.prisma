@@ -215,26 +215,27 @@ model sellerAccount {
 }
 
 model openClawAuthorizationSession {
-  id                 String                            @id
-  browserTokenHash   String                            @unique @map("browser_token_hash")
-  exchangeCodeHash   String                            @unique @map("exchange_code_hash")
-  status             OpenClawAuthorizationSessionStatus
-  organizationId     String?                           @map("organization_id")
-  authorizedByUserId String?                           @map("authorized_by_user_id")
+  id                   String                            @id
+  browserTokenHash     String                            @unique @map("browser_token_hash")
+  codeChallenge        String                            @map("code_challenge")
+  codeChallengeMethod  String                            @map("code_challenge_method")
+  status               OpenClawAuthorizationSessionStatus
+  organizationId       String?                           @map("organization_id")
+  authorizedByUserId   String?                           @map("authorized_by_user_id")
   proposedWorkspaceName String?                        @map("proposed_workspace_name")
   proposedWorkspaceSlug String?                        @map("proposed_workspace_slug")
-  failureCode        String?                           @map("failure_code")
-  failureMessage     String?                           @map("failure_message")
-  expiresAt          DateTime                          @map("expires_at")
-  authorizedAt       DateTime?                         @map("authorized_at")
-  rejectedAt         DateTime?                         @map("rejected_at")
-  cancelledAt        DateTime?                         @map("cancelled_at")
-  expiredAt          DateTime?                         @map("expired_at")
-  redeemedAt         DateTime?                         @map("redeemed_at")
-  createdAt          DateTime                          @default(now()) @map("created_at")
-  updatedAt          DateTime                          @updatedAt @map("updated_at")
-  authorizedByUser   user?                             @relation("openClawAuthorizationSessionAuthorizedByUser", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
-  organization       organization?                     @relation("openClawAuthorizationSessionOrganization", fields: [organizationId], references: [id], onDelete: SetNull)
+  failureCode          String?                           @map("failure_code")
+  failureMessage       String?                           @map("failure_message")
+  expiresAt            DateTime                          @map("expires_at")
+  authorizedAt         DateTime?                         @map("authorized_at")
+  rejectedAt           DateTime?                         @map("rejected_at")
+  cancelledAt          DateTime?                         @map("cancelled_at")
+  expiredAt            DateTime?                         @map("expired_at")
+  redeemedAt           DateTime?                         @map("redeemed_at")
+  createdAt            DateTime                          @default(now()) @map("created_at")
+  updatedAt            DateTime                          @updatedAt @map("updated_at")
+  authorizedByUser     user?                             @relation("openClawAuthorizationSessionAuthorizedByUser", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
+  organization         organization?                     @relation("openClawAuthorizationSessionOrganization", fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([status])

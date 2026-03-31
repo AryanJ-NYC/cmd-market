@@ -78,6 +78,7 @@
   - `/`
   - `/llms.txt`
   - `/openapi.json`
+- CMD Market is intended to support many agent clients over time. The currently implemented browser handoff in this repo is OpenClaw-specific.
 - OpenClaw authorization is currently limited to one organization-owned API key per seller workspace.
 - The preferred OpenClaw bootstrap is the browser handoff flow. `/seller/settings` remains the manual fallback for creating an API key directly in CMD Market.
 - Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
@@ -98,50 +99,54 @@
 - The Prisma client is regenerated on install through the root `postinstall` hook, and can be regenerated manually with `pnpm db:generate`.
 - Vercel runs `pnpm vercel-build`, which applies `prisma migrate deploy` before `pnpm build`.
 - If an older local PostgreSQL volume reports Prisma drift from pre-reset seller-account migrations, reset that local dev database once with `pnpm db:stop`, then `pnpm db:start`, then rerun `pnpm db:migrate`.
-- Set `OPENCLAW_CLIENT_SECRET` in `apps/web/.env` before using the OpenClaw authorization-session API routes.
 
 ## OpenClaw Browser Handoff
 
 1. Start an authorization session from OpenClaw:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions \
-     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET"
+     -H "content-type: application/json" \
+     -d '{
+       "code_challenge": "Ohl5Zw6T12pMbIx9m6J_JlCQeFz7THZs_nvgRJ_f-xQ",
+       "code_challenge_method": "S256"
+     }'
    ```
    You can optionally prefill the first seller workspace OpenClaw wants CMD Market to offer during onboarding:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions \
-     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
+       "code_challenge": "Ohl5Zw6T12pMbIx9m6J_JlCQeFz7THZs_nvgRJ_f-xQ",
+       "code_challenge_method": "S256",
        "proposed_workspace": {
          "name": "OpenClaw Seller Studio",
          "slug": "openclaw-seller-studio"
        }
      }'
    ```
-   CMD Market returns a `browser_url`, `exchange_code`, `session_id`, and `expires_at`.
+   CMD Market returns a `browser_url`, `session_id`, and `expires_at`.
 2. Open the returned `browser_url` in a browser.
 3. Complete browser sign-in and either create the first seller workspace inline in the handoff or continue through workspace activation/selection if one already exists.
 4. Approve or reject the consent screen at `/seller/authorize/openclaw/:browserToken`.
-5. Poll the session from OpenClaw:
+5. Poll the session from the same OpenClaw client instance:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/status \
-     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
-       "exchange_code": "exchange_secret"
+       "code_verifier": "openclaw-public-client-code-verifier-123456789"
      }'
    ```
 6. Redeem the authorized session into the seller-scoped API key:
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions/auth_123/redeem \
-     -H "authorization: Bearer $OPENCLAW_CLIENT_SECRET" \
      -H "content-type: application/json" \
      -d '{
-       "exchange_code": "exchange_secret"
+       "code_verifier": "openclaw-public-client-code-verifier-123456789"
      }'
    ```
 7. Use the returned `api_key` against seller routes such as `GET /api/seller/context`.
+
+The current OpenClaw handoff is safe for public clients because CMD Market stores only the PKCE code challenge, never the plaintext verifier. This is the current OpenClaw-specific contract, not the final generalized multi-agent authorization substrate.
 
 ## Listing Authoring API Flow
 

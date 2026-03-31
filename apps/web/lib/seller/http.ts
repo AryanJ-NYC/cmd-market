@@ -87,17 +87,19 @@ export const openClawAuthorizationSessionStatusSchema = z
     id: "OpenClawAuthorizationSessionStatus"
   });
 
-export const openClawAuthorizationExchangeRequestSchema = z
+export const openClawAuthorizationSessionVerifierRequestSchema = z
   .object({
-    exchange_code: z.string().min(1)
+    code_verifier: createPkceCodeVerifierSchema()
   })
   .meta({
-    description: "One-time exchange code provided when the OpenClaw authorization session starts.",
-    id: "OpenClawAuthorizationExchangeRequest"
+    description: "PKCE code verifier proving control of the OpenClaw client instance that started the session.",
+    id: "OpenClawAuthorizationSessionVerifierRequest"
   });
 
 export const openClawAuthorizationSessionCreateRequestSchema = z
   .object({
+    code_challenge: createPkceS256CodeChallengeSchema(),
+    code_challenge_method: z.literal("S256"),
     proposed_workspace: z
       .object({
         name: z.string().trim().min(1).optional(),
@@ -107,7 +109,7 @@ export const openClawAuthorizationSessionCreateRequestSchema = z
   })
   .meta({
     description:
-      "Optional proposed first-workspace details that CMD Market can prefill during the OpenClaw browser handoff.",
+      "PKCE proof for the OpenClaw public-client handoff, plus optional first-workspace details that CMD Market can prefill during onboarding.",
     id: "OpenClawAuthorizationSessionCreateRequest"
   });
 
@@ -115,7 +117,6 @@ export const openClawAuthorizationSessionCreateResponseSchema = z
   .object({
     data: z.object({
       browser_url: z.string().url(),
-      exchange_code: z.string(),
       expires_at: z.iso.datetime(),
       session_id: z.string()
     })
@@ -188,4 +189,21 @@ export function serializeSellerPublishabilityResponse(input: {
       sellerContext: input.sellerContext
     }
   });
+}
+
+function createPkceCodeVerifierSchema() {
+  return z
+    .string()
+    .trim()
+    .min(43)
+    .max(128)
+    .regex(/^[A-Za-z0-9\-._~]+$/);
+}
+
+function createPkceS256CodeChallengeSchema() {
+  return z
+    .string()
+    .trim()
+    .length(43)
+    .regex(/^[A-Za-z0-9_-]+$/);
 }

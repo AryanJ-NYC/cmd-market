@@ -10,7 +10,7 @@ import {
 import { getOpenClawAuthorizationPageState } from "../../../../../lib/seller/service";
 
 export const metadata: Metadata = {
-  description: "Approve OpenClaw to manage your CMD Market seller workspace.",
+  description: "Approve the OpenClaw client instance that initiated this CMD Market seller handoff.",
   title: "Authorize OpenClaw"
 };
 
@@ -59,8 +59,9 @@ export default async function OpenClawAuthorizationPage({
               <p className="text-xs uppercase tracking-[0.3em] text-stone-500">OpenClaw Authorization</p>
               <h1 className="text-3xl font-semibold text-stone-50">Create your seller workspace and authorize OpenClaw</h1>
               <p className="text-sm leading-6 text-stone-400">
-                To finish connecting OpenClaw for {state.email}, CMD Market needs a seller workspace. You can create your
-                first one here, confirm the details, and complete the authorization in the same step.
+                To finish connecting the OpenClaw instance that started this handoff for {state.email}, CMD Market needs a
+                seller workspace. You can create your first one here, confirm the details, and complete the authorization in
+                the same step.
               </p>
             </div>
 
@@ -70,7 +71,7 @@ export default async function OpenClawAuthorizationPage({
 
             <section className="rounded-2xl border border-stone-800 bg-stone-900/70 p-5 text-sm leading-6 text-stone-300">
               CMD Market will create the seller workspace below only after you confirm it here. OpenClaw will not receive a
-              long-lived seller credential until that workspace exists and you approve the handoff.
+              long-lived seller credential for this client instance until that workspace exists and you approve the handoff.
             </section>
 
             <section className="rounded-3xl border border-stone-800 bg-stone-950/80 p-6">
@@ -127,7 +128,8 @@ export default async function OpenClawAuthorizationPage({
               <p className="text-xs uppercase tracking-[0.3em] text-stone-500">OpenClaw Authorization</p>
               <h1 className="text-3xl font-semibold text-stone-50">Authorize OpenClaw</h1>
               <p className="text-sm leading-6 text-stone-400">
-                You are authorizing OpenClaw to manage the active CMD Market seller workspace for {state.email}.
+                You are authorizing the OpenClaw instance that started this handoff to manage the active CMD Market seller
+                workspace for {state.email}.
               </p>
             </div>
 
@@ -138,8 +140,8 @@ export default async function OpenClawAuthorizationPage({
             </section>
 
             <section className="rounded-2xl border border-stone-800 bg-stone-900/40 p-5 text-sm leading-6 text-stone-300">
-              CMD Market will only mint the OpenClaw API key after you approve this workspace. If you reject the
-              request, OpenClaw will receive a structured failure and no long-lived credential will be issued.
+              CMD Market will only mint the OpenClaw API key after you approve this workspace. If you reject the request,
+              this OpenClaw client instance will receive a structured failure and no long-lived credential will be issued.
             </section>
 
             <div className="flex flex-wrap gap-3">
@@ -202,11 +204,11 @@ function OpenClawSecondaryActions({ browserToken }: { browserToken: string }) {
 function getTerminalBody(status: OpenClawTerminalStatus) {
   switch (status) {
     case "authorized":
-      return "OpenClaw has been approved for this CMD Market workspace. Return to OpenClaw to redeem the credential.";
+      return "This OpenClaw client instance has been approved for the CMD Market workspace. Return to OpenClaw to redeem the credential.";
     case "cancelled":
       return "This authorization session was cancelled before completion.";
     case "expired":
-      return "This authorization session expired before OpenClaw could finish the exchange.";
+      return "This authorization session expired before the initiating OpenClaw client instance could finish the verifier flow.";
     case "redeemed":
       return "This authorization session has already been redeemed into a seller-scoped OpenClaw credential.";
     case "rejected":

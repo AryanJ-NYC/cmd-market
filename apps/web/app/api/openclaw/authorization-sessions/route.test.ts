@@ -26,7 +26,6 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     createOpenClawAuthorizationSession.mockResolvedValue({
       data: {
         browserUrl: "https://cmd.market/seller/authorize/openclaw/browser_token",
-        exchangeCode: "exchange_secret",
         expiresAt: "2026-03-31T03:20:00.000Z",
         sessionId: "auth_123"
       },
@@ -37,13 +36,14 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     const response = await POST(
       new Request("https://cmd.market/api/openclaw/authorization-sessions", {
         body: JSON.stringify({
+          code_challenge: "G7m1R8wQ0cGvT9r2xH6d4sN1pL5uY3jK8bA6eF2qWz0",
+          code_challenge_method: "S256",
           proposed_workspace: {
             name: "OpenClaw Seller Studio",
             slug: "openclaw-seller-studio"
           }
         }),
         headers: {
-          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -53,49 +53,25 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     expect(createOpenClawAuthorizationSession).toHaveBeenCalledWith(
       expect.any(Request),
       {
-        name: "OpenClaw Seller Studio",
-        slug: "openclaw-seller-studio"
+        codeChallenge: "G7m1R8wQ0cGvT9r2xH6d4sN1pL5uY3jK8bA6eF2qWz0",
+        codeChallengeMethod: "S256",
+        proposedWorkspace: {
+          name: "OpenClaw Seller Studio",
+          slug: "openclaw-seller-studio"
+        }
       }
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: {
         browser_url: "https://cmd.market/seller/authorize/openclaw/browser_token",
-        exchange_code: "exchange_secret",
         expires_at: "2026-03-31T03:20:00.000Z",
         session_id: "auth_123"
       }
     });
   });
 
-  it("returns unauthorized when the OpenClaw client secret is missing", async () => {
-    const routePath = new URL("./route.ts", import.meta.url);
-
-    expect(existsSync(routePath)).toBe(true);
-
-    if (!existsSync(routePath)) {
-      return;
-    }
-
-    const { POST } = await import("./route");
-    const response = await POST(
-      new Request("https://cmd.market/api/openclaw/authorization-sessions", {
-        method: "POST"
-      })
-    );
-
-    expect(createOpenClawAuthorizationSession).not.toHaveBeenCalled();
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({
-      error: {
-        code: "unauthorized",
-        message: "Valid OpenClaw client authorization is required.",
-        retryAfterMs: null
-      }
-    });
-  });
-
-  it("returns invalid_request when the optional proposed workspace payload is malformed", async () => {
+  it("returns invalid_request when the PKCE request payload is malformed", async () => {
     const routePath = new URL("./route.ts", import.meta.url);
 
     expect(existsSync(routePath)).toBe(true);
@@ -108,12 +84,10 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     const response = await POST(
       new Request("https://cmd.market/api/openclaw/authorization-sessions", {
         body: JSON.stringify({
-          proposed_workspace: {
-            slug: "Bad Slug"
-          }
+          code_challenge: "a".repeat(129),
+          code_challenge_method: "S256"
         }),
         headers: {
-          authorization: "Bearer test-openclaw-client-secret",
           "content-type": "application/json"
         },
         method: "POST"
@@ -125,7 +99,8 @@ describe("POST /api/openclaw/authorization-sessions", () => {
     await expect(response.json()).resolves.toEqual({
       error: {
         code: "invalid_request",
-        message: "Request body must include a valid optional proposed_workspace payload.",
+        message:
+          "Request body must include a valid PKCE code_challenge payload and optional proposed_workspace details.",
         retryAfterMs: null
       }
     });

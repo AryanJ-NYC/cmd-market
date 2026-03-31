@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { auth } from "../auth";
 import { createMarketplaceId } from "../db/ids";
 import { env } from "../env";
@@ -57,21 +57,23 @@ export async function activateSellerWorkspace(headers: HeadersLike, organization
 
 export async function createOpenClawAuthorizationSession(
   request: Request,
-  proposedWorkspace: OpenClawAuthorizationSessionProposedWorkspaceInput = {}
+  input: CreateOpenClawAuthorizationSessionInput
 ) {
   const now = new Date();
   const browserToken = createAuthorizationSecret();
-  const exchangeCode = createAuthorizationSecret();
   const expiresAt = new Date(now.getTime() + OPENCLAW_AUTHORIZATION_SESSION_TTL_MS);
-  const resolvedProposedWorkspace = resolveOpenClawAuthorizationSessionProposedWorkspace(proposedWorkspace);
+  const resolvedProposedWorkspace = resolveOpenClawAuthorizationSessionProposedWorkspace(
+    input.proposedWorkspace ?? {}
+  );
 
   const session = await openClawAuthorizationSessionRepository.createSession({
     authorizedAt: null,
     authorizedByUserId: null,
     browserTokenHash: hashAuthorizationSecret(browserToken),
     cancelledAt: null,
+    codeChallenge: input.codeChallenge,
+    codeChallengeMethod: input.codeChallengeMethod,
     createdAt: now,
-    exchangeCodeHash: hashAuthorizationSecret(exchangeCode),
     expiredAt: null,
     expiresAt,
     failureCode: null,
@@ -89,7 +91,6 @@ export async function createOpenClawAuthorizationSession(
   return {
     data: {
       browserUrl: new URL(`/seller/authorize/openclaw/${browserToken}`, request.url).toString(),
-      exchangeCode,
       expiresAt: session.expiresAt.toISOString(),
       sessionId: session.id
     },
@@ -97,11 +98,13 @@ export async function createOpenClawAuthorizationSession(
   };
 }
 
-export async function getOpenClawAuthorizationSessionStatus(input: OpenClawAuthorizationSessionLookup) {
-  const session = await readOpenClawAuthorizationSessionForExchange(input);
+export async function getOpenClawAuthorizationSessionStatus(
+  input: OpenClawAuthorizationSessionVerifierLookup
+) {
+  const session = await readOpenClawAuthorizationSessionForVerifier(input);
 
   if (!session) {
-    throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+    throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization verifier is invalid.");
   }
 
   return {
@@ -426,11 +429,11 @@ export async function cancelOpenClawAuthorizationSession(headers: HeadersLike, b
   };
 }
 
-export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthorizationSessionLookup) {
-  const session = await readOpenClawAuthorizationSessionForExchange(input);
+export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthorizationSessionVerifierLookup) {
+  const session = await readOpenClawAuthorizationSessionForVerifier(input);
 
   if (!session) {
-    throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+    throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization verifier is invalid.");
   }
 
   if (session.status !== "authorized" || !session.organizationId || !session.authorizedByUserId) {
@@ -911,7 +914,7 @@ function hashAuthorizationSecret(value: string) {
 }
 
 async function createOpenClawPendingRotationApiKey(
-  input: OpenClawAuthorizationSessionLookup,
+  input: OpenClawAuthorizationSessionVerifierLookup,
   session: OpenClawAuthorizationSessionRecord
 ) {
   try {
@@ -930,10 +933,10 @@ async function createOpenClawPendingRotationApiKey(
       throw caughtError;
     }
 
-    const currentSession = await readOpenClawAuthorizationSessionForExchange(input);
+    const currentSession = await readOpenClawAuthorizationSessionForVerifier(input);
 
     if (!currentSession) {
-      throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+      throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization verifier is invalid.");
     }
 
     throw createOpenClawRedeemError(currentSession.status);
@@ -942,7 +945,7 @@ async function createOpenClawPendingRotationApiKey(
 
 async function normalizeOpenClawRedeemFailure(input: {
   error: unknown;
-  input: OpenClawAuthorizationSessionLookup;
+  input: OpenClawAuthorizationSessionVerifierLookup;
   organizationId: string;
 }) {
   if (!isOpenClawApiKeyUniquenessConflictError(input.error)) {
@@ -950,7 +953,7 @@ async function normalizeOpenClawRedeemFailure(input: {
   }
 
   const [currentSession, currentOpenClawKey] = await Promise.all([
-    readOpenClawAuthorizationSessionForExchange(input.input),
+    readOpenClawAuthorizationSessionForVerifier(input.input),
     openClawAuthorizationSessionRepository.findApiKeyByOrganizationId(input.organizationId)
   ]);
 
@@ -959,7 +962,7 @@ async function normalizeOpenClawRedeemFailure(input: {
   }
 
   if (!currentSession) {
-    return new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+    return new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization verifier is invalid.");
   }
 
   return createOpenClawRedeemError(currentSession.status);
@@ -1041,13 +1044,28 @@ async function readOpenClawAuthorizationSessionByBrowserToken(browserToken: stri
   return resolveExpiredOpenClawAuthorizationSession(session);
 }
 
-async function readOpenClawAuthorizationSessionForExchange(input: OpenClawAuthorizationSessionLookup) {
-  const session = await openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash(
-    input.sessionId,
-    hashAuthorizationSecret(input.exchangeCode)
-  );
+async function readOpenClawAuthorizationSessionForVerifier(input: OpenClawAuthorizationSessionVerifierLookup) {
+  const session = await openClawAuthorizationSessionRepository.findSessionById(input.sessionId);
+
+  if (!session || !isValidOpenClawAuthorizationSessionVerifier(input.codeVerifier, session)) {
+    return null;
+  }
 
   return resolveExpiredOpenClawAuthorizationSession(session);
+}
+
+function isValidOpenClawAuthorizationSessionVerifier(
+  codeVerifier: string,
+  session: OpenClawAuthorizationSessionRecord
+) {
+  if (session.codeChallengeMethod !== "S256") {
+    return false;
+  }
+
+  return timingSafeEqualIfSameLength(
+    createOpenClawCodeChallenge(codeVerifier),
+    session.codeChallenge
+  );
 }
 
 async function resolveExpiredOpenClawAuthorizationSession(
@@ -1216,8 +1234,14 @@ type OpenClawAuthorizationSessionProposedWorkspaceInput = {
 
 const OPENCLAW_AUTHORIZATION_SESSION_TTL_MS = 1000 * 60 * 15;
 
-type OpenClawAuthorizationSessionLookup = {
-  exchangeCode: string;
+type CreateOpenClawAuthorizationSessionInput = {
+  codeChallenge: string;
+  codeChallengeMethod: "S256";
+  proposedWorkspace?: OpenClawAuthorizationSessionProposedWorkspaceInput;
+};
+
+type OpenClawAuthorizationSessionVerifierLookup = {
+  codeVerifier: string;
   sessionId: string;
 };
 
@@ -1243,3 +1267,18 @@ type HeadersLike = {
   entries(): IterableIterator<[string, string]>;
   get(name: string): string | null;
 };
+
+function createOpenClawCodeChallenge(codeVerifier: string) {
+  return createHash("sha256").update(codeVerifier).digest("base64url");
+}
+
+function timingSafeEqualIfSameLength(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}

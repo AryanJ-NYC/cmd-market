@@ -4,6 +4,8 @@
 
 CMD Market is a peer-to-peer marketplace operated by Scarce City, Inc. Sellers list physical goods through agent integrations such as OpenClaw, and buyers discover and purchase items through both the CMD Market web app and their own agents.
 
+CMD Market is intended to support many agent clients over time. OpenClaw is the first implemented integration in this repository, not the only intended agent path.
+
 ## Core Users
 
 - Sellers who want a fast path from one image upload to structured marketplace listings
@@ -18,4 +20,4 @@ CMD Market is a peer-to-peer marketplace operated by Scarce City, Inc. Sellers l
 
 ## Current Repo Scope
 
-This repository currently covers only the initial web scaffold. Marketplace workflows, listing flows, search, integrations, and transaction systems are not implemented yet.
+This repository currently covers the initial web scaffold plus the first marketplace backend slices, including the first seller-agent auth handoff for OpenClaw. Broader multi-agent authorization, app catalogs, search, and transaction systems are not implemented yet.

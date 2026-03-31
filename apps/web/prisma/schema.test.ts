@@ -135,15 +135,17 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain("model openClawAuthorizationSession {");
     expect(schema).toContain("browserTokenHash");
     expect(schema).toContain('@map("browser_token_hash")');
-    expect(schema).toContain("exchangeCodeHash");
-    expect(schema).toContain('@map("exchange_code_hash")');
+    expect(schema).toContain("codeChallenge");
+    expect(schema).toContain('@map("code_challenge")');
+    expect(schema).toContain("codeChallengeMethod");
+    expect(schema).toContain('@map("code_challenge_method")');
     expect(schema).toContain("organizationId");
     expect(schema).toContain("authorizedByUserId");
     expect(schema).toContain("proposedWorkspaceName");
     expect(schema).toContain('@map("proposed_workspace_name")');
     expect(schema).toContain("proposedWorkspaceSlug");
     expect(schema).toContain('@map("proposed_workspace_slug")');
-    expect(schema).toContain("status             OpenClawAuthorizationSessionStatus");
+    expect(schema).toContain("status               OpenClawAuthorizationSessionStatus");
     expect(schema).toContain('@map("openclaw_authorization_session")');
   });
 
@@ -155,7 +157,8 @@ describe("prisma seller eligibility schema", () => {
     );
     expect(migration).toContain('CREATE TABLE "openclaw_authorization_session"');
     expect(migration).toContain('"browser_token_hash" TEXT NOT NULL');
-    expect(migration).toContain('"exchange_code_hash" TEXT NOT NULL');
+    expect(migration).toContain('"code_challenge" TEXT NOT NULL');
+    expect(migration).toContain('"code_challenge_method" TEXT NOT NULL');
     expect(migration).toContain('"organization_id" TEXT');
     expect(migration).toContain('"authorized_by_user_id" TEXT');
     expect(migration).toContain('"proposed_workspace_name" TEXT');
