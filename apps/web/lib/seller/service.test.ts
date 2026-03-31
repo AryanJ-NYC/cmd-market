@@ -678,6 +678,61 @@ describe("seller service", () => {
     expect(openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation).not.toHaveBeenCalled();
   });
 
+  it("returns authorization_pending when staged-key creation races with another redeem", async () => {
+    openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash
+      .mockResolvedValueOnce(
+        createOpenClawAuthorizationSessionRecord({
+          authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+          authorizedByUserId: "user_123",
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          organizationId: "org_123",
+          status: "authorized"
+        })
+      )
+      .mockResolvedValueOnce(
+        createOpenClawAuthorizationSessionRecord({
+          authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+          authorizedByUserId: "user_123",
+          browserTokenHash: "browser_hash",
+          exchangeCodeHash: "exchange_hash",
+          id: "auth_123",
+          organizationId: "org_123",
+          status: "authorized"
+        })
+      );
+    openClawAuthorizationSessionRepository.findApiKeyByOrganizationId.mockResolvedValue({
+      configId: "openclaw",
+      id: "key_existing"
+    });
+    sellerAccountRepository.findByOrganizationId.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    authApi.createApiKey.mockRejectedValue({
+      code: "P2002",
+      message: "Unique constraint failed on the fields: (`configId`,`referenceId`)",
+      meta: {
+        target: ["configId", "referenceId"]
+      }
+    });
+
+    await expect(
+      sellerService.redeemOpenClawAuthorizationSession({
+        exchangeCode: "exchange_secret",
+        sessionId: "auth_123"
+      })
+    ).rejects.toMatchObject({
+      code: "authorization_pending",
+      message: "OpenClaw authorization is not ready to redeem yet."
+    });
+
+    expect(openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation).not.toHaveBeenCalled();
+    expect(openClawAuthorizationSessionRepository.deleteApiKeyById).not.toHaveBeenCalled();
+  });
+
   it("cleans up the temporary OpenClaw key if redeem fails after key creation", async () => {
     openClawAuthorizationSessionRepository.findSessionByIdAndExchangeCodeHash.mockResolvedValue(
       createOpenClawAuthorizationSessionRecord({

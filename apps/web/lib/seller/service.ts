@@ -432,16 +432,7 @@ export async function redeemOpenClawAuthorizationSession(input: OpenClawAuthoriz
     session.organizationId
   );
 
-  const createdKey = await auth.api.createApiKey({
-    body: {
-      configId: OPENCLAW_PENDING_ROTATION_API_KEY_CONFIG_ID,
-      metadata: { integration: "openclaw" },
-      name: OPENCLAW_API_KEY_NAME,
-      organizationId: session.organizationId,
-      prefix: OPENCLAW_API_KEY_PREFIX,
-      userId: session.authorizedByUserId
-    }
-  });
+  const createdKey = await createOpenClawPendingRotationApiKey(input, session);
 
   const redeemedAt = new Date();
 
@@ -773,6 +764,36 @@ function hashAuthorizationSecret(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+async function createOpenClawPendingRotationApiKey(
+  input: OpenClawAuthorizationSessionLookup,
+  session: OpenClawAuthorizationSessionRecord
+) {
+  try {
+    return await auth.api.createApiKey({
+      body: {
+        configId: OPENCLAW_PENDING_ROTATION_API_KEY_CONFIG_ID,
+        metadata: { integration: "openclaw" },
+        name: OPENCLAW_API_KEY_NAME,
+        organizationId: session.organizationId,
+        prefix: OPENCLAW_API_KEY_PREFIX,
+        userId: session.authorizedByUserId
+      }
+    });
+  } catch (caughtError) {
+    if (!isOpenClawPendingRotationConflictError(caughtError)) {
+      throw caughtError;
+    }
+
+    const currentSession = await readOpenClawAuthorizationSessionForExchange(input);
+
+    if (!currentSession) {
+      throw new SellerDomainError(401, "unauthorized_exchange", "OpenClaw authorization exchange is invalid.");
+    }
+
+    throw createOpenClawRedeemError(currentSession.status);
+  }
+}
+
 async function requireResolvedOpenClawAuthorizationSession(session: OpenClawAuthorizationSessionRecord) {
   const resolvedSession = await resolveExpiredOpenClawAuthorizationSession(session);
 
@@ -905,6 +926,51 @@ function createOpenClawRedeemError(status: OpenClawAuthorizationSessionRecord["s
         "OpenClaw authorization session was rejected."
       );
   }
+}
+
+function isOpenClawPendingRotationConflictError(error: unknown) {
+  const uniqueTarget = readPrismaUniqueTarget(error);
+
+  if (uniqueTarget.length > 0) {
+    return uniqueTarget.some((value) => value.includes("config")) &&
+      uniqueTarget.some((value) => value.includes("reference"));
+  }
+
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  const looksLikeUniqueConflict =
+    message.includes("p2002") ||
+    message.includes("unique constraint") ||
+    message.includes("duplicate key");
+
+  return looksLikeUniqueConflict &&
+    (message.includes("configid") || message.includes("config_id")) &&
+    (message.includes("referenceid") || message.includes("reference_id"));
+}
+
+function readPrismaUniqueTarget(error: unknown) {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("code" in error) ||
+    (error as { code?: unknown }).code !== "P2002" ||
+    !("meta" in error)
+  ) {
+    return [];
+  }
+
+  const target = (error as { meta?: { target?: unknown } }).meta?.target;
+
+  if (Array.isArray(target)) {
+    return target
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.toLowerCase());
+  }
+
+  if (typeof target === "string") {
+    return [target.toLowerCase()];
+  }
+
+  return [];
 }
 
 function shouldExpireOpenClawAuthorizationSession(
