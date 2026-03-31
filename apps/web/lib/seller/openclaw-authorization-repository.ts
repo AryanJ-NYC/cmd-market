@@ -26,6 +26,8 @@ export class PrismaOpenClawAuthorizationSessionRepository {
         failureMessage: record.failureMessage,
         id: record.id,
         organizationId: record.organizationId,
+        proposedWorkspaceName: record.proposedWorkspaceName,
+        proposedWorkspaceSlug: record.proposedWorkspaceSlug,
         redeemedAt: record.redeemedAt,
         rejectedAt: record.rejectedAt,
         status: record.status,
@@ -315,6 +317,8 @@ function mapOpenClawAuthorizationSessionModel(
     failureMessage: record.failureMessage,
     id: record.id,
     organizationId: record.organizationId,
+    proposedWorkspaceName: record.proposedWorkspaceName,
+    proposedWorkspaceSlug: record.proposedWorkspaceSlug,
     redeemedAt: record.redeemedAt,
     rejectedAt: record.rejectedAt,
     status: record.status,
@@ -335,6 +339,8 @@ export type OpenClawAuthorizationSessionRecord = {
   failureMessage: string | null;
   id: string;
   organizationId: string | null;
+  proposedWorkspaceName: string | null;
+  proposedWorkspaceSlug: string | null;
   redeemedAt: Date | null;
   rejectedAt: Date | null;
   status: "authorized" | "cancelled" | "expired" | "pending" | "redeemed" | "rejected";

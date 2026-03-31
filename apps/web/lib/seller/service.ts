@@ -19,13 +19,16 @@ import {
 import { sellerAccountRepository } from "./repository";
 import {
   assertWorkspaceCreationAllowed,
+  DEFAULT_OPENCLAW_WORKSPACE_NAME,
+  DEFAULT_OPENCLAW_WORKSPACE_SLUG,
   buildSellerReturnPath,
   buildOpenClawApiKeyRequest,
   getSellerWorkspaceFlow,
   OPENCLAW_API_KEY_CONFIG_ID,
   OPENCLAW_API_KEY_NAME,
   OPENCLAW_API_KEY_PREFIX,
-  OPENCLAW_PENDING_ROTATION_API_KEY_CONFIG_ID
+  OPENCLAW_PENDING_ROTATION_API_KEY_CONFIG_ID,
+  SellerWorkspaceError
 } from "./workspace";
 
 export async function activateSellerWorkspace(headers: HeadersLike, organizationId: string) {
@@ -52,11 +55,15 @@ export async function activateSellerWorkspace(headers: HeadersLike, organization
   return session;
 }
 
-export async function createOpenClawAuthorizationSession(request: Request) {
+export async function createOpenClawAuthorizationSession(
+  request: Request,
+  proposedWorkspace: OpenClawAuthorizationSessionProposedWorkspaceInput = {}
+) {
   const now = new Date();
   const browserToken = createAuthorizationSecret();
   const exchangeCode = createAuthorizationSecret();
   const expiresAt = new Date(now.getTime() + OPENCLAW_AUTHORIZATION_SESSION_TTL_MS);
+  const resolvedProposedWorkspace = resolveOpenClawAuthorizationSessionProposedWorkspace(proposedWorkspace);
 
   const session = await openClawAuthorizationSessionRepository.createSession({
     authorizedAt: null,
@@ -71,6 +78,8 @@ export async function createOpenClawAuthorizationSession(request: Request) {
     failureMessage: null,
     id: createMarketplaceId(),
     organizationId: null,
+    proposedWorkspaceName: resolvedProposedWorkspace.name,
+    proposedWorkspaceSlug: resolvedProposedWorkspace.slug,
     redeemedAt: null,
     rejectedAt: null,
     status: "pending",
@@ -133,6 +142,15 @@ export async function getOpenClawAuthorizationPageState(headers: HeadersLike, br
     };
   }
 
+  if (pageContext.workspaceData.flow.kind === "create") {
+    return {
+      email: pageContext.workspaceData.session.email,
+      kind: "workspace_creation" as const,
+      proposedWorkspace: getOpenClawAuthorizationSessionProposedWorkspace(pageContext.session),
+      sessionId: pageContext.session.id
+    };
+  }
+
   if (
     pageContext.workspaceData.flow.kind !== "ready" ||
     !pageContext.workspaceData.activeOrganization ||
@@ -144,12 +162,11 @@ export async function getOpenClawAuthorizationPageState(headers: HeadersLike, br
     };
   }
 
-  return {
+  return createOpenClawAuthorizationApprovedPageState({
     email: pageContext.workspaceData.session.email,
-    kind: "consent" as const,
     sessionId: pageContext.session.id,
     workspace: pageContext.workspaceData.activeOrganization
-  };
+  });
 }
 
 export async function createOpenClawApiKey(headers: HeadersLike, organizationId: string) {
@@ -223,12 +240,36 @@ export async function authorizeOpenClawAuthorizationSession(headers: HeadersLike
   }
 
   assertOpenClawAuthorizationPending(pageContext.session);
+  const workspaceData = requireOpenClawAuthorizationWorkspace(pageContext, "authorizing");
 
-  if (
-    !pageContext.workspaceData ||
-    pageContext.workspaceData.flow.kind !== "ready" ||
-    !pageContext.workspaceData.activeOrganization
-  ) {
+  return authorizePendingOpenClawAuthorizationSessionForWorkspace({
+    actorUserId: workspaceData.session.id,
+    sellerAccount: workspaceData.activeSellerAccount,
+    session: pageContext.session,
+    workspace: workspaceData.activeOrganization,
+    workspaceCreatedDuringHandoff: false
+  });
+}
+
+export async function createWorkspaceAndAuthorizeOpenClawAuthorizationSession(
+  headers: HeadersLike,
+  browserToken: string,
+  input: CreateSellerWorkspaceInput
+) {
+  const requestHeaders = toHeaders(headers);
+  const pageContext = await getOpenClawAuthorizationPageContext(requestHeaders, browserToken);
+
+  if (!pageContext.session) {
+    throw new SellerDomainError(404, "authorization_not_found", "OpenClaw authorization session was not found.");
+  }
+
+  assertOpenClawAuthorizationPending(pageContext.session);
+
+  if (!pageContext.workspaceData) {
+    throw new SellerDomainError(401, "unauthorized", "Authentication is required.");
+  }
+
+  if (pageContext.workspaceData.flow.kind !== "create") {
     throw new SellerDomainError(
       409,
       "organization_context_required",
@@ -236,58 +277,36 @@ export async function authorizeOpenClawAuthorizationSession(headers: HeadersLike
     );
   }
 
-  const authorizedSession = await openClawAuthorizationSessionRepository.markAuthorized({
-    authorizedAt: new Date(),
-    authorizedByUserId: pageContext.workspaceData.session.id,
-    id: pageContext.session.id,
-    organizationId: pageContext.workspaceData.activeOrganization.id
-  });
+  let createdWorkspace: Awaited<ReturnType<typeof createSellerWorkspace>>;
 
-  if (!authorizedSession.applied) {
-    const currentSession = await requireResolvedOpenClawAuthorizationSession(authorizedSession.session);
-
-    if (
-      currentSession.status === "authorized" &&
-      currentSession.organizationId === pageContext.workspaceData.activeOrganization.id
-    ) {
-      return {
-        data: {
-          sessionId: currentSession.id,
-          status: currentSession.status,
-          workspace: pageContext.workspaceData.activeOrganization
-        },
-        ok: true as const
-      };
+  try {
+    createdWorkspace = await createSellerWorkspace(requestHeaders, input);
+  } catch (caughtError) {
+    if (isWorkspaceCreationContextChangeError(caughtError)) {
+      throw new SellerDomainError(
+        409,
+        "organization_context_required",
+        "Choose a seller workspace before authorizing OpenClaw."
+      );
     }
 
-    throw createOpenClawRedeemError(currentSession.status);
+    throw caughtError;
   }
 
-  await openClawAuthorizationSessionRepository.createAuditEvent({
-    action: "openclaw_authorization.approved",
-    actorApiKeyId: null,
-    actorType: "user",
-    actorUserId: pageContext.workspaceData.session.id,
-    createdAt: authorizedSession.session.authorizedAt ?? new Date(),
-    entityId: authorizedSession.session.id,
-    entityTable: "openclaw_authorization_session",
-    id: createMarketplaceId(),
-    metadata: {
-      organizationId: pageContext.workspaceData.activeOrganization.id,
-      sessionStatus: authorizedSession.session.status
-    },
-    note: "Seller approved OpenClaw workspace access.",
-    sellerAccountId: pageContext.workspaceData.activeSellerAccount?.id ?? null
+  const sellerAccount = await ensureSellerAccountForOrganization({
+    organizationId: createdWorkspace.id,
+    repository: sellerAccountRepository,
+    createId: createMarketplaceId,
+    now: new Date()
   });
 
-  return {
-    data: {
-      sessionId: authorizedSession.session.id,
-      status: authorizedSession.session.status,
-      workspace: pageContext.workspaceData.activeOrganization
-    },
-    ok: true as const
-  };
+  return authorizePendingOpenClawAuthorizationSessionForWorkspace({
+    actorUserId: pageContext.workspaceData.session.id,
+    sellerAccount,
+    session: pageContext.session,
+    workspace: createdWorkspace,
+    workspaceCreatedDuringHandoff: true
+  });
 }
 
 export async function rejectOpenClawAuthorizationSession(headers: HeadersLike, browserToken: string) {
@@ -530,6 +549,117 @@ export async function createSellerWorkspace(headers: HeadersLike, input: CreateS
   });
 
   return createdOrganization;
+}
+
+async function authorizePendingOpenClawAuthorizationSessionForWorkspace(input: {
+  actorUserId: string;
+  sellerAccount: SellerAccountRecord;
+  session: OpenClawAuthorizationSessionRecord;
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  workspaceCreatedDuringHandoff: boolean;
+}) {
+  const authorizedSession = await openClawAuthorizationSessionRepository.markAuthorized({
+    authorizedAt: new Date(),
+    authorizedByUserId: input.actorUserId,
+    id: input.session.id,
+    organizationId: input.workspace.id
+  });
+
+  if (!authorizedSession.applied) {
+    const currentSession = await requireResolvedOpenClawAuthorizationSession(authorizedSession.session);
+
+    if (currentSession.status === "authorized" && currentSession.organizationId === input.workspace.id) {
+      return createOpenClawAuthorizationApprovedResult({
+        sessionId: currentSession.id,
+        status: currentSession.status,
+        workspace: input.workspace
+      });
+    }
+
+    throw createOpenClawRedeemError(currentSession.status);
+  }
+
+  await openClawAuthorizationSessionRepository.createAuditEvent({
+    action: "openclaw_authorization.approved",
+    actorApiKeyId: null,
+    actorType: "user",
+    actorUserId: input.actorUserId,
+    createdAt: authorizedSession.session.authorizedAt ?? new Date(),
+    entityId: authorizedSession.session.id,
+    entityTable: "openclaw_authorization_session",
+    id: createMarketplaceId(),
+    metadata: {
+      organizationId: input.workspace.id,
+      sessionStatus: authorizedSession.session.status,
+      ...(input.workspaceCreatedDuringHandoff
+        ? { workspaceCreatedDuringHandoff: true }
+        : {})
+    },
+    note: "Seller approved OpenClaw workspace access.",
+    sellerAccountId: input.sellerAccount.id
+  });
+
+  return createOpenClawAuthorizationApprovedResult({
+    sessionId: authorizedSession.session.id,
+    status: "authorized",
+    workspace: input.workspace
+  });
+}
+
+function createOpenClawAuthorizationApprovedPageState(input: {
+  email: string;
+  sessionId: string;
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}) {
+  return {
+    email: input.email,
+    kind: "consent" as const,
+    sessionId: input.sessionId,
+    workspace: input.workspace
+  };
+}
+
+function createOpenClawAuthorizationApprovedResult(input: {
+  sessionId: string;
+  status: "authorized";
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}) {
+  return {
+    data: {
+      sessionId: input.sessionId,
+      status: input.status,
+      workspace: input.workspace
+    },
+    ok: true as const
+  };
+}
+
+function getOpenClawAuthorizationSessionProposedWorkspace(session: OpenClawAuthorizationSessionRecord) {
+  return {
+    name: session.proposedWorkspaceName ?? DEFAULT_OPENCLAW_WORKSPACE_NAME,
+    slug: session.proposedWorkspaceSlug ?? DEFAULT_OPENCLAW_WORKSPACE_SLUG
+  };
+}
+
+function resolveOpenClawAuthorizationSessionProposedWorkspace(
+  proposedWorkspace: OpenClawAuthorizationSessionProposedWorkspaceInput
+) {
+  return {
+    name: proposedWorkspace.name?.trim() || DEFAULT_OPENCLAW_WORKSPACE_NAME,
+    slug: proposedWorkspace.slug?.trim() || DEFAULT_OPENCLAW_WORKSPACE_SLUG
+  };
 }
 
 export async function getSellerWorkspacePageData(headers: HeadersLike): Promise<SellerWorkspacePageData | null> {
@@ -837,7 +967,7 @@ async function requireResolvedOpenClawAuthorizationSession(session: OpenClawAuth
 
 function requireOpenClawAuthorizationWorkspace(
   pageContext: Awaited<ReturnType<typeof getOpenClawAuthorizationPageContext>>,
-  action: "cancelling" | "rejecting"
+  action: "authorizing" | "cancelling" | "rejecting"
 ) {
   const workspaceData = pageContext.workspaceData;
   const activeOrganization = workspaceData?.activeOrganization ?? null;
@@ -861,6 +991,10 @@ function requireOpenClawAuthorizationWorkspace(
     activeOrganization,
     activeSellerAccount
   };
+}
+
+function isWorkspaceCreationContextChangeError(error: unknown) {
+  return error instanceof SellerWorkspaceError && error.code === "workspace_creation_not_allowed";
 }
 
 async function getOpenClawAuthorizationPageContext(headers: HeadersLike, browserToken: string) {
@@ -1053,6 +1187,11 @@ function toHeaders(headers: HeadersLike): Headers {
 type CreateSellerWorkspaceInput = {
   name: string;
   slug: string;
+};
+
+type OpenClawAuthorizationSessionProposedWorkspaceInput = {
+  name?: string;
+  slug?: string;
 };
 
 const OPENCLAW_AUTHORIZATION_SESSION_TTL_MS = 1000 * 60 * 15;

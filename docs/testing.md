@@ -15,6 +15,7 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
 - `apps/web/lib/seller/workspace.test.ts` covers seller workspace routing, safe return-path handling, and OpenClaw key request rules.
 - `apps/web/lib/seller/openclaw-authorization-repository.test.ts` covers Prisma persistence for OpenClaw authorization sessions and their audit events.
 - `apps/web/lib/seller/service.test.ts` covers seller request-context resolution, OpenClaw authorization-session lifecycle behavior, and publishability across session and API-key paths.
+- `apps/web/app/seller/authorize/openclaw/[browserToken]/actions.test.ts` covers the browser handoff actions, including inline first-workspace creation failures and redirects.
 - `apps/web/lib/seller/http.test.ts` covers seller response envelopes shared by runtime JSON and OpenAPI generation.
 - `apps/web/lib/listing/service.test.ts` covers blank draft creation, draft-scoped upload session creation, media attachment, cross-seller rejection, and duplicate-attachment handling.
 - `apps/web/lib/listing/service.draft-publish.test.ts` covers real listing draft fields, typed trading-card attributes, category reads, publish validation, and public listing reads.
@@ -39,7 +40,7 @@ The repo now uses a mix of targeted behavior tests and repo-level verification:
   - workspace create/select flow at `/seller/workspace`
   - single-workspace auto-activation and multi-workspace POST selection at `/seller/workspace`
   - OpenClaw browser handoff create/poll/redeem flow works end-to-end through `/api/openclaw/authorization-sessions*`
-  - the consent screen at `/seller/authorize/openclaw/:browserToken` handles sign-in redirects, workspace redirects, approval, rejection, and terminal states
+  - the consent screen at `/seller/authorize/openclaw/:browserToken` handles sign-in redirects, inline first-workspace creation, workspace redirects, approval, rejection, and terminal states
   - seller settings and manual OpenClaw key creation still work at `/seller/settings`
   - development override only appears outside production and only for allowlisted sellers
   - `GET /api/seller/context`

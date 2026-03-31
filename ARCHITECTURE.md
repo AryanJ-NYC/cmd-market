@@ -44,11 +44,11 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 
 - Browser sellers sign in at `/sign-in`.
 - Seller workspace creation and selection live under `/seller/workspace`, with workspace activation handled through a server action instead of a mutating `GET` route.
-- OpenClaw can start a short-lived browser handoff session that lands on `/seller/authorize/openclaw/:browserToken`.
+- OpenClaw can start a short-lived browser handoff session that lands on `/seller/authorize/openclaw/:browserToken`, and that handoff can create the first seller workspace inline before authorization is approved.
 - Seller settings at `/seller/settings` still supports manual OpenClaw API key creation as a fallback path.
 - Seller request resolution is shared between browser sessions and `x-api-key` requests.
 - Development eligibility override is only available outside production, even when `DEV_SELLER_OVERRIDE_EMAILS` is set.
-- OpenClaw authorization sessions are persisted in Prisma with hashed browser tokens plus one-time exchange codes, terminal statuses, and a 15-minute TTL.
+- OpenClaw authorization sessions are persisted in Prisma with hashed browser tokens plus one-time exchange codes, optional proposed first-workspace fields, terminal statuses, and a 15-minute TTL.
 - The first seller APIs are:
   - `POST /api/openclaw/authorization-sessions`
   - `POST /api/openclaw/authorization-sessions/:sessionId/status`

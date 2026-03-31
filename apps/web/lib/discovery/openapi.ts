@@ -22,6 +22,7 @@ import {
 } from "../listing/http";
 import {
   openClawAuthorizationExchangeRequestSchema,
+  openClawAuthorizationSessionCreateRequestSchema,
   openClawAuthorizationSessionCreateResponseSchema,
   openClawAuthorizationSessionRedeemResponseSchema,
   openClawAuthorizationSessionStatusResponseSchema,
@@ -150,6 +151,10 @@ export function buildOpenApiDocument() {
         post: {
           description:
             "Starts a short-lived OpenClaw browser handoff authorization session and returns the browser URL plus one-time exchange code.",
+          requestBody: jsonRequestBody(
+            openClawAuthorizationSessionCreateRequestSchema,
+            "Optional proposed first-workspace details to prefill during the OpenClaw browser handoff."
+          ),
           responses: sellerResponses({
             success: {
               description: createOpenClawAuthorizationSessionRoute.description,

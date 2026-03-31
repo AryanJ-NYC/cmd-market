@@ -96,6 +96,21 @@ export const openClawAuthorizationExchangeRequestSchema = z
     id: "OpenClawAuthorizationExchangeRequest"
   });
 
+export const openClawAuthorizationSessionCreateRequestSchema = z
+  .object({
+    proposed_workspace: z
+      .object({
+        name: z.string().trim().min(1).optional(),
+        slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional()
+      })
+      .optional()
+  })
+  .meta({
+    description:
+      "Optional proposed first-workspace details that CMD Market can prefill during the OpenClaw browser handoff.",
+    id: "OpenClawAuthorizationSessionCreateRequest"
+  });
+
 export const openClawAuthorizationSessionCreateResponseSchema = z
   .object({
     data: z.object({

@@ -5,12 +5,14 @@ import { SellerDomainError } from "../../../../../lib/seller/domain";
 const {
   authorizeOpenClawAuthorizationSession,
   cancelOpenClawAuthorizationSession,
+  createWorkspaceAndAuthorizeOpenClawAuthorizationSession,
   rejectOpenClawAuthorizationSession,
   headers,
   redirect
 } = vi.hoisted(() => ({
     authorizeOpenClawAuthorizationSession: vi.fn(),
     cancelOpenClawAuthorizationSession: vi.fn(),
+    createWorkspaceAndAuthorizeOpenClawAuthorizationSession: vi.fn(),
     rejectOpenClawAuthorizationSession: vi.fn(),
     headers: vi.fn(async () => new Headers()),
     redirect: vi.fn((target: string) => {
@@ -29,6 +31,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("../../../../../lib/seller/service", () => ({
   authorizeOpenClawAuthorizationSession,
   cancelOpenClawAuthorizationSession,
+  createWorkspaceAndAuthorizeOpenClawAuthorizationSession,
   rejectOpenClawAuthorizationSession
 }));
 
@@ -36,6 +39,7 @@ describe("openclaw authorization actions", () => {
   beforeEach(() => {
     authorizeOpenClawAuthorizationSession.mockReset();
     cancelOpenClawAuthorizationSession.mockReset();
+    createWorkspaceAndAuthorizeOpenClawAuthorizationSession.mockReset();
     rejectOpenClawAuthorizationSession.mockReset();
     headers.mockReset();
     headers.mockResolvedValue(new Headers());
@@ -148,6 +152,71 @@ describe("openclaw authorization actions", () => {
 
     await expect(authorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
       "redirect:/seller/authorize/openclaw/browser_token"
+    );
+  });
+
+  it("creates the first seller workspace and returns to the same handoff page", async () => {
+    createWorkspaceAndAuthorizeOpenClawAuthorizationSession.mockResolvedValue({
+      data: {
+        sessionId: "auth_123",
+        status: "authorized",
+        workspace: {
+          id: "org_123",
+          name: "OpenClaw Seller Studio",
+          slug: "openclaw-seller-studio"
+        }
+      },
+      ok: true
+    });
+
+    const formData = new FormData();
+    formData.set("browserToken", "browser_token");
+    formData.set("name", "OpenClaw Seller Studio");
+    formData.set("slug", "openclaw-seller-studio");
+
+    const { createWorkspaceAndAuthorizeOpenClawAuthorizationAction } = await import("./actions");
+
+    await expect(createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
+      "redirect:/seller/authorize/openclaw/browser_token"
+    );
+    expect(createWorkspaceAndAuthorizeOpenClawAuthorizationSession).toHaveBeenCalledWith(
+      expect.any(Headers),
+      "browser_token",
+      {
+        name: "OpenClaw Seller Studio",
+        slug: "openclaw-seller-studio"
+      }
+    );
+  });
+
+  it("keeps workspace creation validation errors inline on the handoff page", async () => {
+    const formData = new FormData();
+    formData.set("browserToken", "browser_token");
+    formData.set("name", "OpenClaw Seller Studio");
+    formData.set("slug", "Bad Slug");
+
+    const { createWorkspaceAndAuthorizeOpenClawAuthorizationAction } = await import("./actions");
+
+    await expect(createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
+      "redirect:/seller/authorize/openclaw/browser_token?error=Workspace+slug+must+use+lowercase+letters%2C+numbers%2C+and+hyphens.&name=OpenClaw+Seller+Studio&slug=Bad+Slug"
+    );
+    expect(createWorkspaceAndAuthorizeOpenClawAuthorizationSession).not.toHaveBeenCalled();
+  });
+
+  it("preserves edited workspace values when handoff creation fails", async () => {
+    createWorkspaceAndAuthorizeOpenClawAuthorizationSession.mockRejectedValue(
+      new Error("Workspace slug is already taken.")
+    );
+
+    const formData = new FormData();
+    formData.set("browserToken", "browser_token");
+    formData.set("name", "OpenClaw Seller Studio");
+    formData.set("slug", "openclaw-seller-studio");
+
+    const { createWorkspaceAndAuthorizeOpenClawAuthorizationAction } = await import("./actions");
+
+    await expect(createWorkspaceAndAuthorizeOpenClawAuthorizationAction(formData)).rejects.toThrow(
+      "redirect:/seller/authorize/openclaw/browser_token?error=Workspace+slug+is+already+taken.&name=OpenClaw+Seller+Studio&slug=openclaw-seller-studio"
     );
   });
 });

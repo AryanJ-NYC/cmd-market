@@ -5,6 +5,8 @@ import { createWorkspaceAction } from "./actions";
 import { WorkspaceActivationForm } from "./workspace-activation-form";
 import { getSellerWorkspacePageData } from "../../../lib/seller/service";
 import {
+  DEFAULT_OPENCLAW_WORKSPACE_NAME,
+  DEFAULT_OPENCLAW_WORKSPACE_SLUG,
   buildSellerReturnPath,
   shouldAutoSubmitWorkspaceActivation
 } from "../../../lib/seller/workspace";
@@ -74,7 +76,7 @@ export default async function SellerWorkspacePage({
                   className="w-full rounded-2xl border border-stone-800 bg-stone-900 px-4 py-3 text-sm text-stone-100 outline-none ring-0 placeholder:text-stone-500"
                   id="workspace-name"
                   name="name"
-                  placeholder="OpenClaw Seller Studio"
+                  placeholder={DEFAULT_OPENCLAW_WORKSPACE_NAME}
                   required
                   type="text"
                 />
@@ -88,7 +90,7 @@ export default async function SellerWorkspacePage({
                   id="workspace-slug"
                   name="slug"
                   pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                  placeholder="openclaw-seller-studio"
+                  placeholder={DEFAULT_OPENCLAW_WORKSPACE_SLUG}
                   required
                   type="text"
                 />

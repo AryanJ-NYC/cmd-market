@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   authorizeOpenClawAuthorizationAction,
   cancelOpenClawAuthorizationAction,
+  createWorkspaceAndAuthorizeOpenClawAuthorizationAction,
   rejectOpenClawAuthorizationAction
 } from "./actions";
 import { getOpenClawAuthorizationPageState } from "../../../../../lib/seller/service";
@@ -14,11 +15,14 @@ export const metadata: Metadata = {
 };
 
 export default async function OpenClawAuthorizationPage({
-  params
+  params,
+  searchParams
 }: OpenClawAuthorizationPageProps) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const browserToken = resolvedParams.browserToken;
   const state = await getOpenClawAuthorizationPageState(await headers(), browserToken);
+  const error = typeof resolvedSearchParams.error === "string" ? resolvedSearchParams.error : null;
 
   if (state.kind === "sign_in_required") {
     redirect(`/sign-in?next=${encodeURIComponent(state.nextPath)}`);
@@ -49,6 +53,74 @@ export default async function OpenClawAuthorizationPage({
           />
         ) : null}
 
+        {state.kind === "workspace_creation" ? (
+          <>
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.3em] text-stone-500">OpenClaw Authorization</p>
+              <h1 className="text-3xl font-semibold text-stone-50">Create your seller workspace and authorize OpenClaw</h1>
+              <p className="text-sm leading-6 text-stone-400">
+                To finish connecting OpenClaw for {state.email}, CMD Market needs a seller workspace. You can create your
+                first one here, confirm the details, and complete the authorization in the same step.
+              </p>
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-red-900/70 bg-red-950/30 px-4 py-3 text-sm text-red-200">{error}</div>
+            ) : null}
+
+            <section className="rounded-2xl border border-stone-800 bg-stone-900/70 p-5 text-sm leading-6 text-stone-300">
+              CMD Market will create the seller workspace below only after you confirm it here. OpenClaw will not receive a
+              long-lived seller credential until that workspace exists and you approve the handoff.
+            </section>
+
+            <section className="rounded-3xl border border-stone-800 bg-stone-950/80 p-6">
+              <form action={createWorkspaceAndAuthorizeOpenClawAuthorizationAction} className="space-y-5">
+                <input name="browserToken" type="hidden" value={browserToken} />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-stone-200" htmlFor="workspace-name">
+                    Workspace name
+                  </label>
+                  <input
+                    className="w-full rounded-2xl border border-stone-800 bg-stone-900 px-4 py-3 text-sm text-stone-100 outline-none ring-0 placeholder:text-stone-500"
+                    defaultValue={getWorkspaceFieldValue(
+                      resolvedSearchParams.name,
+                      state.proposedWorkspace.name
+                    )}
+                    id="workspace-name"
+                    name="name"
+                    required
+                    type="text"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-stone-200" htmlFor="workspace-slug">
+                    Workspace slug
+                  </label>
+                  <input
+                    className="w-full rounded-2xl border border-stone-800 bg-stone-900 px-4 py-3 text-sm text-stone-100 outline-none ring-0 placeholder:text-stone-500"
+                    defaultValue={getWorkspaceFieldValue(
+                      resolvedSearchParams.slug,
+                      state.proposedWorkspace.slug
+                    )}
+                    id="workspace-slug"
+                    name="slug"
+                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                    required
+                    type="text"
+                  />
+                  <p className="text-xs text-stone-500">Use lowercase letters, numbers, and hyphens only.</p>
+                </div>
+                <button className="rounded-full border border-stone-700 bg-stone-100 px-5 py-3 text-sm font-medium text-stone-950 transition hover:bg-white">
+                  Create Workspace and Authorize OpenClaw
+                </button>
+              </form>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <OpenClawSecondaryActions browserToken={browserToken} />
+              </div>
+            </section>
+          </>
+        ) : null}
+
         {state.kind === "consent" ? (
           <>
             <div className="space-y-3">
@@ -77,18 +149,7 @@ export default async function OpenClawAuthorizationPage({
                   Authorize OpenClaw
                 </button>
               </form>
-              <form action={rejectOpenClawAuthorizationAction}>
-                <input name="browserToken" type="hidden" value={browserToken} />
-                <button className="rounded-full border border-stone-700 px-5 py-3 text-sm font-medium text-stone-100 transition hover:border-stone-500 hover:bg-stone-800">
-                  Reject Request
-                </button>
-              </form>
-              <form action={cancelOpenClawAuthorizationAction}>
-                <input name="browserToken" type="hidden" value={browserToken} />
-                <button className="rounded-full border border-stone-800 px-5 py-3 text-sm font-medium text-stone-400 transition hover:border-stone-600 hover:text-stone-200">
-                  Cancel For Now
-                </button>
-              </form>
+              <OpenClawSecondaryActions browserToken={browserToken} />
             </div>
           </>
         ) : null}
@@ -119,6 +180,25 @@ function OpenClawAuthorizationMessage({
   );
 }
 
+function OpenClawSecondaryActions({ browserToken }: { browserToken: string }) {
+  return (
+    <>
+      <form action={rejectOpenClawAuthorizationAction}>
+        <input name="browserToken" type="hidden" value={browserToken} />
+        <button className="rounded-full border border-stone-700 px-5 py-3 text-sm font-medium text-stone-100 transition hover:border-stone-500 hover:bg-stone-800">
+          Reject Request
+        </button>
+      </form>
+      <form action={cancelOpenClawAuthorizationAction}>
+        <input name="browserToken" type="hidden" value={browserToken} />
+        <button className="rounded-full border border-stone-800 px-5 py-3 text-sm font-medium text-stone-400 transition hover:border-stone-600 hover:text-stone-200">
+          Cancel For Now
+        </button>
+      </form>
+    </>
+  );
+}
+
 function getTerminalBody(status: OpenClawTerminalStatus) {
   switch (status) {
     case "authorized":
@@ -144,6 +224,10 @@ function getTerminalPanelClassName(tone: OpenClawAuthorizationTone) {
   }
 
   return "rounded-2xl border border-stone-800 bg-stone-900/70 px-4 py-3 text-sm text-stone-300";
+}
+
+function getWorkspaceFieldValue(value: string | string[] | undefined, fallbackValue: string) {
+  return typeof value === "string" ? value : fallbackValue;
 }
 
 function getTerminalTitle(status: OpenClawTerminalStatus) {
@@ -188,4 +272,5 @@ type OpenClawAuthorizationPageProps = {
   params: Promise<{
     browserToken: string;
   }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };

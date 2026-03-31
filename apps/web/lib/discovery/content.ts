@@ -7,7 +7,7 @@ export const discoveryNotes = [
   "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff, not by scraping a long-lived key from settings.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
-  "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and workspace selection."
+  "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection."
 ] as const;
 
 export const publicRoutes = [
@@ -45,7 +45,7 @@ export const sellerBrowserRoutes = [
     title: "Seller Workspace"
   },
   {
-    description: "Human approval screen for an OpenClaw-started browser handoff session.",
+    description: "Human handoff screen for an OpenClaw-started browser session, including first-workspace creation when needed.",
     href: "/seller/authorize/openclaw/{browserToken}",
     title: "OpenClaw Authorization Handoff"
   },
@@ -58,7 +58,7 @@ export const sellerBrowserRoutes = [
 
 export const sellerApiRoutes = [
   {
-    description: "Start a short-lived OpenClaw authorization session and return the browser handoff URL plus exchange code.",
+    description: "Start a short-lived OpenClaw authorization session and return the browser handoff URL plus exchange code, with optional proposed first-workspace details.",
     href: "/api/openclaw/authorization-sessions",
     title: "POST /api/openclaw/authorization-sessions"
   },
@@ -134,7 +134,7 @@ export const publicApiRoutes = [
 
 export const sellerFlowSteps = [
   {
-    body: "Sign in and choose the workspace that will own your CMD Market listings.",
+    body: "Sign in and either create your first seller workspace or choose the one that should own your CMD Market listings.",
     label: "Set up your seller workspace"
   },
   {
@@ -175,7 +175,7 @@ export const repoDocs = [
   }
 ] as const satisfies RouteLink[];
 
-export const openApiVersion = "0.2.0";
+export const openApiVersion = "0.2.1";
 
 export function rawGitHubUrl(path: string) {
   return `https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/${path}`;

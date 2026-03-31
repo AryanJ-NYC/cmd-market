@@ -105,9 +105,20 @@
    ```bash
    curl -X POST http://localhost:3000/api/openclaw/authorization-sessions
    ```
+   You can optionally prefill the first seller workspace OpenClaw wants CMD Market to offer during onboarding:
+   ```bash
+   curl -X POST http://localhost:3000/api/openclaw/authorization-sessions \
+     -H "content-type: application/json" \
+     -d '{
+       "proposed_workspace": {
+         "name": "OpenClaw Seller Studio",
+         "slug": "openclaw-seller-studio"
+       }
+     }'
+   ```
    CMD Market returns a `browser_url`, `exchange_code`, `session_id`, and `expires_at`.
 2. Open the returned `browser_url` in a browser.
-3. Complete browser sign-in and workspace create/select if needed.
+3. Complete browser sign-in and either create the first seller workspace inline in the handoff or continue through workspace activation/selection if one already exists.
 4. Approve or reject the consent screen at `/seller/authorize/openclaw/:browserToken`.
 5. Poll the session from OpenClaw:
    ```bash

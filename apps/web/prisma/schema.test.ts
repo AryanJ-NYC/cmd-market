@@ -139,6 +139,10 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain('@map("exchange_code_hash")');
     expect(schema).toContain("organizationId");
     expect(schema).toContain("authorizedByUserId");
+    expect(schema).toContain("proposedWorkspaceName");
+    expect(schema).toContain('@map("proposed_workspace_name")');
+    expect(schema).toContain("proposedWorkspaceSlug");
+    expect(schema).toContain('@map("proposed_workspace_slug")');
     expect(schema).toContain("status             OpenClawAuthorizationSessionStatus");
     expect(schema).toContain('@map("openclaw_authorization_session")');
   });
@@ -154,6 +158,8 @@ describe("prisma seller eligibility schema", () => {
     expect(migration).toContain('"exchange_code_hash" TEXT NOT NULL');
     expect(migration).toContain('"organization_id" TEXT');
     expect(migration).toContain('"authorized_by_user_id" TEXT');
+    expect(migration).toContain('"proposed_workspace_name" TEXT');
+    expect(migration).toContain('"proposed_workspace_slug" TEXT');
   });
 
 });

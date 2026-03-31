@@ -191,9 +191,53 @@ describe("seller service", () => {
         exchangeCodeHash: expect.any(String),
         expiresAt: expect.any(Date),
         id: "auth_123",
+        proposedWorkspaceName: "OpenClaw Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio",
         status: "pending"
       })
     );
+  });
+
+  it("persists proposed workspace values when OpenClaw provides them at session creation time", async () => {
+    createMarketplaceId.mockReturnValueOnce("auth_123");
+    openClawAuthorizationSessionRepository.createSession.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        expiresAt: new Date("2026-03-31T03:20:00.000Z"),
+        id: "auth_123",
+        proposedWorkspaceName: "Custom Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio"
+      })
+    );
+
+    const result = await sellerService.createOpenClawAuthorizationSession(
+      new Request("https://cmd.market/api/openclaw/authorization-sessions", {
+        method: "POST"
+      }),
+      {
+        name: "Custom Seller Studio"
+      }
+    );
+
+    expect(openClawAuthorizationSessionRepository.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "auth_123",
+        proposedWorkspaceName: "Custom Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio"
+      })
+    );
+    expect(result).toEqual({
+      data: {
+        browserUrl: expect.stringMatching(
+          /^https:\/\/cmd\.market\/seller\/authorize\/openclaw\/[A-Za-z0-9_-]+$/
+        ),
+        exchangeCode: expect.any(String),
+        expiresAt: "2026-03-31T03:20:00.000Z",
+        sessionId: "auth_123"
+      },
+      ok: true
+    });
   });
 
   it("returns pending while an OpenClaw authorization session is waiting for consent", async () => {
@@ -329,6 +373,35 @@ describe("seller service", () => {
         name: "Acme",
         slug: "acme"
       }
+    });
+  });
+
+  it("returns an in-handoff workspace creation state for signed-in first-run sellers", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([]);
+    openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        proposedWorkspaceName: "Custom Seller Studio",
+        proposedWorkspaceSlug: "custom-seller-studio"
+      })
+    );
+
+    const result = await sellerService.getOpenClawAuthorizationPageState(new Headers(), "browser_token");
+
+    expect(result).toEqual({
+      email: "seller@example.com",
+      kind: "workspace_creation",
+      proposedWorkspace: {
+        name: "Custom Seller Studio",
+        slug: "custom-seller-studio"
+      },
+      sessionId: "auth_123"
     });
   });
 
@@ -1037,6 +1110,161 @@ describe("seller service", () => {
     });
   });
 
+  it("creates the first seller workspace and authorizes OpenClaw in one handoff submit", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([]);
+    authApi.createOrganization.mockResolvedValue({
+      id: "org_123",
+      name: "OpenClaw Seller Studio",
+      slug: "openclaw-seller-studio"
+    });
+    authApi.setActiveOrganization.mockResolvedValue(undefined);
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        proposedWorkspaceName: "OpenClaw Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio"
+      })
+    );
+    openClawAuthorizationSessionRepository.markAuthorized.mockResolvedValue({
+      applied: true,
+      session: createOpenClawAuthorizationSessionRecord({
+        authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+        authorizedByUserId: "user_123",
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        organizationId: "org_123",
+        proposedWorkspaceName: "OpenClaw Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio",
+        status: "authorized"
+      })
+    });
+
+    const result = await sellerService.createWorkspaceAndAuthorizeOpenClawAuthorizationSession(
+      new Headers(),
+      "browser_token",
+      {
+        name: "OpenClaw Seller Studio",
+        slug: "openclaw-seller-studio"
+      }
+    );
+
+    expect(authApi.createOrganization).toHaveBeenCalledWith({
+      body: {
+        keepCurrentActiveOrganization: false,
+        name: "OpenClaw Seller Studio",
+        slug: "openclaw-seller-studio",
+        userId: "user_123"
+      }
+    });
+    expect(openClawAuthorizationSessionRepository.markAuthorized).toHaveBeenCalledWith({
+      authorizedAt: expect.any(Date),
+      authorizedByUserId: "user_123",
+      id: "auth_123",
+      organizationId: "org_123"
+    });
+    expect(openClawAuthorizationSessionRepository.createAuditEvent).toHaveBeenCalledWith({
+      action: "openclaw_authorization.approved",
+      actorApiKeyId: null,
+      actorType: "user",
+      actorUserId: "user_123",
+      createdAt: expect.any(Date),
+      entityId: "auth_123",
+      entityTable: "openclaw_authorization_session",
+      id: "seller_123",
+      metadata: {
+        organizationId: "org_123",
+        sessionStatus: "authorized",
+        workspaceCreatedDuringHandoff: true
+      },
+      note: "Seller approved OpenClaw workspace access.",
+      sellerAccountId: "seller_123"
+    });
+    expect(result).toEqual({
+      data: {
+        sessionId: "auth_123",
+        status: "authorized",
+        workspace: {
+          id: "org_123",
+          name: "OpenClaw Seller Studio",
+          slug: "openclaw-seller-studio"
+        }
+      },
+      ok: true
+    });
+  });
+
+  it("does not roll back the new workspace if the handoff terminalizes before authorization is marked", async () => {
+    authApi.getSession.mockResolvedValue({
+      session: { activeOrganizationId: null },
+      user: { email: "seller@example.com", id: "user_123", name: "Seller" }
+    });
+    authApi.listOrganizations.mockResolvedValue([]);
+    authApi.createOrganization.mockResolvedValue({
+      id: "org_123",
+      name: "OpenClaw Seller Studio",
+      slug: "openclaw-seller-studio"
+    });
+    authApi.setActiveOrganization.mockResolvedValue(undefined);
+    sellerAccountRepository.createIfMissing.mockResolvedValue(
+      createSellerAccount({
+        organizationId: "org_123"
+      })
+    );
+    openClawAuthorizationSessionRepository.findSessionByBrowserTokenHash.mockResolvedValue(
+      createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        id: "auth_123",
+        proposedWorkspaceName: "OpenClaw Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio"
+      })
+    );
+    openClawAuthorizationSessionRepository.markAuthorized.mockResolvedValue({
+      applied: false,
+      session: createOpenClawAuthorizationSessionRecord({
+        browserTokenHash: "browser_hash",
+        exchangeCodeHash: "exchange_hash",
+        expiredAt: new Date("2026-03-31T03:10:00.000Z"),
+        failureCode: "authorization_expired",
+        failureMessage: "OpenClaw authorization session expired before completion.",
+        id: "auth_123",
+        proposedWorkspaceName: "OpenClaw Seller Studio",
+        proposedWorkspaceSlug: "openclaw-seller-studio",
+        status: "expired",
+        updatedAt: new Date("2026-03-31T03:10:00.000Z")
+      })
+    });
+
+    await expect(
+      sellerService.createWorkspaceAndAuthorizeOpenClawAuthorizationSession(
+        new Headers(),
+        "browser_token",
+        {
+          name: "OpenClaw Seller Studio",
+          slug: "openclaw-seller-studio"
+        }
+      )
+    ).rejects.toMatchObject({
+      code: "authorization_expired",
+      message: "OpenClaw authorization session has expired."
+    });
+
+    expect(authApi.createOrganization).toHaveBeenCalledTimes(1);
+    expect(openClawAuthorizationSessionRepository.createAuditEvent).not.toHaveBeenCalled();
+  });
+
   it("rejects the OpenClaw browser handoff for the active seller workspace", async () => {
     authApi.getSession.mockResolvedValue({
       session: { activeOrganizationId: "org_123" },
@@ -1334,6 +1562,8 @@ function createOpenClawAuthorizationSessionRecord(
     failureMessage: null,
     id: "auth_123",
     organizationId: null,
+    proposedWorkspaceName: "OpenClaw Seller Studio",
+    proposedWorkspaceSlug: "openclaw-seller-studio",
     redeemedAt: null,
     rejectedAt: null,
     status: "pending",
@@ -1367,6 +1597,8 @@ type OpenClawAuthorizationSessionRecord = {
   failureMessage: string | null;
   id: string;
   organizationId: string | null;
+  proposedWorkspaceName: string | null;
+  proposedWorkspaceSlug: string | null;
   redeemedAt: Date | null;
   rejectedAt: Date | null;
   status: "authorized" | "cancelled" | "expired" | "pending" | "redeemed" | "rejected";

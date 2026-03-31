@@ -400,6 +400,8 @@ function createAuthorizationSessionRecord(overrides: Partial<AuthorizationSessio
     failureMessage: null,
     id: "auth_123",
     organizationId: null,
+    proposedWorkspaceName: "OpenClaw Seller Studio",
+    proposedWorkspaceSlug: "openclaw-seller-studio",
     redeemedAt: null,
     rejectedAt: null,
     status: "pending",
@@ -421,6 +423,8 @@ type AuthorizationSessionRecord = {
   failureMessage: string | null;
   id: string;
   organizationId: string | null;
+  proposedWorkspaceName: string | null;
+  proposedWorkspaceSlug: string | null;
   redeemedAt: Date | null;
   rejectedAt: Date | null;
   status: "authorized" | "cancelled" | "expired" | "pending" | "redeemed" | "rejected";

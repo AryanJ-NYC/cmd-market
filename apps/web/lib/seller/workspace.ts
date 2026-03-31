@@ -4,6 +4,8 @@ export const OPENCLAW_API_KEY_NAME = "OpenClaw";
 export const OPENCLAW_API_KEY_PREFIX = "cmdmkt_";
 export const OPENCLAW_API_KEY_RATE_LIMIT_MAX_REQUESTS = 300;
 export const OPENCLAW_API_KEY_RATE_LIMIT_WINDOW_MS = 1000 * 60;
+export const DEFAULT_OPENCLAW_WORKSPACE_NAME = "OpenClaw Seller Studio";
+export const DEFAULT_OPENCLAW_WORKSPACE_SLUG = "openclaw-seller-studio";
 
 export function getSellerWorkspaceFlow({
   organizations,
@@ -77,6 +79,10 @@ export function buildSellerReturnPath(candidatePath: string | null, fallbackPath
 
 export function shouldAutoSubmitWorkspaceActivation(error: string | null) {
   return error === null;
+}
+
+export function isValidSellerWorkspaceSlug(value: string) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
 export class SellerWorkspaceError extends Error {

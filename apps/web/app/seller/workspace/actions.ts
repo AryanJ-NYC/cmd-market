@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { activateSellerWorkspace, createSellerWorkspace } from "../../../lib/seller/service";
-import { buildSellerReturnPath } from "../../../lib/seller/workspace";
+import { buildSellerReturnPath, isValidSellerWorkspaceSlug } from "../../../lib/seller/workspace";
 
 export async function createWorkspaceAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -14,7 +14,7 @@ export async function createWorkspaceAction(formData: FormData) {
     redirectToWorkspaceError("Workspace name and slug are required.", nextPath);
   }
 
-  if (!isValidSlug(slug)) {
+  if (!isValidSellerWorkspaceSlug(slug)) {
     redirectToWorkspaceError("Workspace slug must use lowercase letters, numbers, and hyphens.", nextPath);
   }
 
@@ -50,10 +50,6 @@ function getActionErrorMessage(error: unknown) {
   }
 
   return "Workspace creation could not be completed.";
-}
-
-function isValidSlug(value: string) {
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
 function getNextPath(formData: FormData) {

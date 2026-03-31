@@ -221,6 +221,8 @@ model openClawAuthorizationSession {
   status             OpenClawAuthorizationSessionStatus
   organizationId     String?                           @map("organization_id")
   authorizedByUserId String?                           @map("authorized_by_user_id")
+  proposedWorkspaceName String?                        @map("proposed_workspace_name")
+  proposedWorkspaceSlug String?                        @map("proposed_workspace_slug")
   failureCode        String?                           @map("failure_code")
   failureMessage     String?                           @map("failure_message")
   expiresAt          DateTime                          @map("expires_at")

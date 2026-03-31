@@ -27,6 +27,7 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/upload-sessions"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/media"]?.post?.responses?.["404"]).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}/publish"]?.post?.responses?.["422"]).toBeDefined();
+    expect(getRequestBodyRequired(paths["/api/openclaw/authorization-sessions"]?.post?.requestBody)).toBe(false);
     expect(getRequestBodyRequired(paths["/api/seller/upload-sessions"]?.post?.requestBody)).toBe(true);
     expect(getRequestBodyRequired(paths["/api/seller/listings/{listingId}/media"]?.post?.requestBody)).toBe(
       true
@@ -48,6 +49,16 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/context"]?.get?.description).toContain(
       "API keys do not authenticate browser `/seller/*` routes."
     );
+    expect(document.components?.schemas?.OpenClawAuthorizationSessionCreateRequest).toMatchObject({
+      properties: {
+        proposed_workspace: {
+          properties: {
+            name: expect.any(Object),
+            slug: expect.any(Object)
+          }
+        }
+      }
+    });
   });
 });
 
