@@ -72,6 +72,9 @@
   - `GET /api/categories`
   - `GET /api/categories/:categorySlug`
   - `GET /api/listings/:listingId`
+- Public listing browser routes live at:
+  - `/listings/:listingId`
+  - `/listings/:listingId/media/:mediaId`
 - Seller UI entry points live at:
   - `/seller`
   - `/sign-in`
@@ -91,6 +94,8 @@
 - Sellers manage reusable shipping profiles and attach one `shipping_profile_id` to each listing draft before publish.
 - Seller listing responses and public listing responses now include a normalized `shipping` summary block.
 - Draft upload sessions are listing-scoped and currently expect a `listing_id` plus image file descriptors.
+- `GET /api/listings/:listingId` now returns `listing_url` plus stable app-owned media URLs instead of using raw object-storage URLs as the primary public contract.
+- Published listing media should be fetched through `/listings/:listingId/media/:mediaId` when a stable CMD Market-owned URL is needed.
 - Trading-card authoring currently uses one seeded category:
   - `cat_cards`
   - slug `trading-cards`
@@ -268,6 +273,16 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
    ```bash
    curl http://localhost:3000/api/listings/lst_123
    ```
+   The response now includes `listing_url` and stable per-media `url` fields under `/listings/...`.
+9. Open the public listing page in a browser:
+   ```bash
+   open http://localhost:3000/listings/lst_123
+   ```
+10. Resolve a stable published media URL:
+   ```bash
+   curl -I http://localhost:3000/listings/lst_123/media/med_123
+   ```
+   This route returns a temporary redirect to the current backing asset URL.
 
 ## Current Conventions
 

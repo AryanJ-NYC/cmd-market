@@ -8,6 +8,8 @@ describe("buildLlmsText", () => {
     expect(llms).toContain("# CMD Market");
     expect(llms).toContain("[Seller Entry](/seller)");
     expect(llms).toContain("[Sign In](/sign-in)");
+    expect(llms).toContain("[Listing Page](/listings/{listingId})");
+    expect(llms).toContain("[Listing Media](/listings/{listingId}/media/{mediaId})");
     expect(llms).toContain("## Public APIs");
     expect(llms).toContain("[POST /api/openclaw/authorization-sessions](/api/openclaw/authorization-sessions)");
     expect(llms).toContain("[GET /api/categories](/api/categories)");
@@ -24,6 +26,7 @@ describe("buildLlmsText", () => {
     );
     expect(llms).toContain("OpenClaw is the first implemented browser handoff integration today.");
     expect(llms).toContain("PKCE-style verifier flow");
+    expect(llms).toContain("Prefer canonical listing page URLs for user-facing shares");
     expect(llms).toContain(
       "[Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md)"
     );

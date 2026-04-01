@@ -68,6 +68,9 @@ CMD Market is meant to support many agent clients over time. OpenClaw is the fir
   - `GET /api/categories`
   - `GET /api/categories/:categorySlug`
   - `GET /api/listings/:listingId`
+- The first public browser listing routes are:
+  - `/listings/:listingId`
+  - `/listings/:listingId/media/:mediaId`
 
 ## Listing Authoring And Publish Flow
 
@@ -82,6 +85,7 @@ CMD Market is meant to support many agent clients over time. OpenClaw is the fir
 - `PATCH /api/seller/listings/:listingId` updates core draft fields and category-scoped attribute values.
 - `POST /api/seller/listings/:listingId/publish` runs structured validation, enforces seller eligibility, and returns a `422 listing_validation_failed` Problem Details document when the draft is incomplete.
 - Published listing reads are public at `GET /api/listings/:listingId`, but only for listings whose status is `published`.
+- The public listing API now returns canonical listing and media URLs owned by CMD Market, while `/listings/:listingId/media/:mediaId` redirects to the current backing asset without exposing storage layout as the primary contract.
 
 ## Key Flows
 
@@ -89,7 +93,7 @@ CMD Market is meant to support many agent clients over time. OpenClaw is the fir
 - `pnpm db:start` starts the repo-managed PostgreSQL container.
 - `pnpm db:migrate` applies Prisma migrations and regenerates the Prisma client for `apps/web`.
 - The web app imports its global stylesheet from the shared Tailwind package.
-- Seller workspace pages, seller APIs, BetterAuth routes, seeded category metadata, draft publish validation, public listing reads, and the direct-upload media flow now run end-to-end against PostgreSQL plus DigitalOcean Spaces.
+- Seller workspace pages, seller APIs, public listing pages, stable media redirects, seeded category metadata, draft publish validation, public listing reads, and the direct-upload media flow now run end-to-end against PostgreSQL plus DigitalOcean Spaces.
 
 ## Constraints
 

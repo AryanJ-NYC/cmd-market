@@ -150,6 +150,7 @@ export const publicListingResponseSchema = z
       condition_code: z.string().nullable(),
       description: z.string().nullable(),
       id: z.string(),
+      listing_url: z.url(),
       media: z.array(publicListingMediaItemSchema),
       object: z.literal("listing"),
       price: listingPriceSchema.nullable(),
@@ -338,6 +339,7 @@ export function serializePublicListingResponse(listing: PublicListingResource) {
       condition_code: listing.conditionCode,
       description: listing.description,
       id: listing.id,
+      listing_url: listing.listingUrl,
       media: listing.media.map((item) => ({
         alt_text: item.altText,
         id: item.id,
