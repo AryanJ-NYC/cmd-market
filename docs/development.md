@@ -58,6 +58,10 @@
   - `POST /api/openclaw/authorization-sessions/:sessionId/redeem`
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
+  - `GET /api/seller/shipping-profiles`
+  - `POST /api/seller/shipping-profiles`
+  - `GET /api/seller/shipping-profiles/:shippingProfileId`
+  - `PATCH /api/seller/shipping-profiles/:shippingProfileId`
   - `POST /api/seller/listings`
   - `GET /api/seller/listings/:listingId`
   - `PATCH /api/seller/listings/:listingId`
@@ -83,6 +87,9 @@
 - The preferred OpenClaw bootstrap is the browser handoff flow. `/seller/settings` remains the manual fallback for creating an API key directly in CMD Market.
 - Development eligibility override is ignored in production, even if `DEV_SELLER_OVERRIDE_EMAILS` is set.
 - Seller API keys authenticate seller API routes only. Browser seller UI still requires a browser session.
+- Shipping is currently flat domestic shipping for the `US 50 states + DC` only.
+- Sellers manage reusable shipping profiles and attach one `shipping_profile_id` to each listing draft before publish.
+- Seller listing responses and public listing responses now include a normalized `shipping` summary block.
 - Draft upload sessions are listing-scoped and currently expect a `listing_id` plus image file descriptors.
 - Trading-card authoring currently uses one seeded category:
   - `cat_cards`
@@ -150,7 +157,20 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
 
 ## Listing Authoring API Flow
 
-1. Create a blank draft listing:
+1. Create a reusable shipping profile:
+   ```bash
+   curl -X POST http://localhost:3000/api/seller/shipping-profiles \
+     -H "x-api-key: <seller-api-key>" \
+     -H "content-type: application/json" \
+     -d '{
+       "name": "Card mailer",
+       "domestic_rate_minor": 499,
+       "handling_time_days": 2
+     }'
+   ```
+   CMD Market returns a seller-owned `shipping_profile` resource scoped to flat domestic `USD` shipping for the `US 50 states + DC`.
+
+2. Create a blank draft listing:
    ```bash
    curl -X POST http://localhost:3000/api/seller/listings \
      -H "x-api-key: <seller-api-key>" \
@@ -168,13 +188,15 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
        "description": "Clean slab, no cracks, centered well.",
        "condition_code": "used_good",
        "quantity_available": 1,
+       "shipping_profile_id": "shp_123",
        "price": {
          "amount_minor": 125000,
          "currency_code": "USD"
        }
      }'
    ```
-2. Request draft-scoped upload sessions:
+   Draft creation accepts `shipping_profile_id` up front, and publish validation requires a seller-owned shipping profile before the draft can go live.
+3. Request draft-scoped upload sessions:
    ```bash
    curl -X POST http://localhost:3000/api/seller/upload-sessions \
      -H "x-api-key: <seller-api-key>" \
@@ -190,8 +212,8 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
        ]
      }'
    ```
-3. Upload the file bytes directly to Spaces with the returned presigned `PUT` URL and `content-type` header.
-4. Attach the uploaded asset to the draft:
+4. Upload the file bytes directly to Spaces with the returned presigned `PUT` URL and `content-type` header.
+5. Attach the uploaded asset to the draft:
    ```bash
    curl -X POST http://localhost:3000/api/seller/listings/lst_123/media \
      -H "x-api-key: <seller-api-key>" \
@@ -205,16 +227,17 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
      }'
    ```
    `alt_text` is optional, and `sort_order` is optional. If you omit `sort_order`, CMD Market defaults it from the media array order.
-5. Discover the current category metadata before patching attributes:
+6. Discover the current category metadata before patching attributes:
    ```bash
    curl http://localhost:3000/api/categories/trading-cards
    ```
-6. Patch the draft with trading-card fields and attributes:
+7. Patch the draft with trading-card fields and attributes:
    ```bash
    curl -X PATCH http://localhost:3000/api/seller/listings/lst_123 \
      -H "x-api-key: <seller-api-key>" \
      -H "content-type: application/json" \
      -d '{
+       "shipping_profile_id": "shp_123",
        "title": "1999 Charizard Holo PSA 8",
        "description": "Clean slab, no cracks, centered well.",
        "condition_code": "used_good",

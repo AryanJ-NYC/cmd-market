@@ -508,6 +508,7 @@ Purpose:
 Supports:
 
 - public access
+- canonical flat domestic shipping summary from the attached seller shipping profile
 - optional related includes
 
 ### `GET /api/sellers/{seller_slug}`
@@ -548,6 +549,11 @@ Request contract:
 - `listing_id` is required
 - `quantity` required
 - `shipping_address` required
+- `shipping_address.country_code` must be `US`
+- `shipping_address.region` must be one of the `50 states + DC`
+- non-U.S. destinations, territories, and military mail are rejected
+- `shipping_minor` is copied directly from the listing's attached flat domestic shipping profile
+- no carrier rating call occurs during checkout in this slice
 - no cart model
 
 ### `GET /api/orders`
@@ -639,6 +645,53 @@ Notes:
 - this endpoint creates presigned S3-compatible upload requests for DigitalOcean Spaces
 - the response returns an `asset_key` that matches the object key persisted in marketplace tables
 
+### `GET /api/seller/shipping-profiles`
+
+Purpose:
+
+- list reusable seller-owned flat domestic shipping profiles
+
+Auth:
+
+- seller session or seller API key
+
+### `POST /api/seller/shipping-profiles`
+
+Purpose:
+
+- create a reusable seller-owned flat domestic shipping profile
+
+Auth:
+
+- seller session or seller API key
+
+Notes:
+
+- shipping is currently fixed to `US 50 states + DC`
+- `domestic_rate_minor` is stored in `USD` minor units
+- `0` means free shipping
+- `handling_time_days` is constrained to `1 | 2 | 3`
+
+### `GET /api/seller/shipping-profiles/{shipping_profile_id}`
+
+Purpose:
+
+- fetch one seller-owned shipping profile
+
+Auth:
+
+- seller session or seller API key
+
+### `PATCH /api/seller/shipping-profiles/{shipping_profile_id}`
+
+Purpose:
+
+- update one seller-owned shipping profile
+
+Auth:
+
+- seller session or seller API key
+
 ### `POST /api/seller/listings`
 
 Purpose:
@@ -652,6 +705,8 @@ Auth:
 Notes:
 
 - returns a draft listing resource
+- `shipping_profile_id` is optional at create time
+- publish validation requires a seller-owned shipping profile before the listing can go live
 - no publish occurs here
 
 ### `GET /api/seller/listings`
@@ -674,6 +729,10 @@ Auth:
 
 - seller session or seller API key
 
+Notes:
+
+- includes both `shipping_profile_id` and the normalized `shipping` summary
+
 ### `PATCH /api/seller/listings/{listing_id}`
 
 Purpose:
@@ -683,6 +742,10 @@ Purpose:
 Auth:
 
 - seller session or seller API key
+
+Notes:
+
+- accepts `shipping_profile_id` to attach or replace the flat domestic shipping profile on the draft
 
 ### `POST /api/seller/listings/{listing_id}/media`
 
@@ -801,6 +864,36 @@ The marketplace API should not duplicate API key creation, rotation, or revocati
 
 ## Listing Draft And Publish Workflow
 
+### Step 0: create a shipping profile
+
+Request:
+
+`POST /api/seller/shipping-profiles`
+
+```json
+{
+  "name": "Card mailer",
+  "domestic_rate_minor": 499,
+  "handling_time_days": 2
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "id": "shp_01JQSHIP",
+    "object": "shipping_profile",
+    "name": "Card mailer",
+    "domestic_rate_minor": 499,
+    "currency_code": "USD",
+    "handling_time_days": 2,
+    "scope": "us_50_states"
+  }
+}
+```
+
 ### Step 1: create a draft
 
 Request:
@@ -814,6 +907,7 @@ Request:
   "description": "Clean slab, no cracks, centered well.",
   "condition_code": "used_good",
   "quantity_available": 1,
+  "shipping_profile_id": "shp_01JQSHIP",
   "price": {
     "amount_minor": 125000,
     "currency_code": "USD"
@@ -835,6 +929,14 @@ Response:
       "slug": "trading-cards",
       "name": "Trading Cards"
     },
+    "shipping_profile_id": "shp_01JQSHIP",
+    "shipping": {
+      "mode": "flat",
+      "scope": "us_50_states",
+      "domestic_rate_minor": 499,
+      "currency_code": "USD",
+      "handling_time_days": 2
+    },
     "management": {
       "draft_validation": {
         "publishable": false,
@@ -843,6 +945,16 @@ Response:
             "field": "media",
             "code": "minimum_items_not_met",
             "message": "At least one image is required."
+          },
+          {
+            "field": "attributes.grading_company",
+            "code": "required",
+            "message": "Grading Company is required for this category."
+          },
+          {
+            "field": "attributes.grade",
+            "code": "required",
+            "message": "Grade is required for this category."
           }
         ]
       }
@@ -915,6 +1027,7 @@ Request:
 
 ```json
 {
+  "shipping_profile_id": "shp_01JQSHIP",
   "attributes": [
     {
       "key": "grading_company",
@@ -978,6 +1091,8 @@ There is no cart in v1.
 
 An order is created from a listing.
 
+This buyer checkout contract is still planned, not yet implemented in the current repo.
+
 Request:
 
 `POST /api/orders`
@@ -1008,9 +1123,9 @@ Response:
     "buyer_kind": "anonymous",
     "totals": {
       "subtotal_minor": 125000,
-      "shipping_minor": 1500,
+      "shipping_minor": 499,
       "platform_fee_minor": 0,
-      "total_minor": 126500,
+      "total_minor": 125499,
       "currency_code": "USD"
     }
   }

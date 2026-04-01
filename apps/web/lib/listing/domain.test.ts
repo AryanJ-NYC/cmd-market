@@ -50,6 +50,7 @@ describe("listing domain", () => {
           },
         ],
         quantityAvailable: 1,
+        shippingProfileId: "shp_123",
         title: "1999 Charizard Holo PSA 8",
         unitPriceMinor: 125000,
       }),
@@ -89,6 +90,71 @@ describe("listing domain", () => {
       type: "https://cmd.market/problems/listing-validation-failed",
     });
   });
+
+  it("marks drafts without a shipping profile as not publishable", () => {
+    const result = getDraftListingValidation({
+      eligibilityStatus: "eligible",
+      listing: createDraftListingRecord({
+        attributes: [
+          {
+            key: "grading_company",
+            label: "Grading Company",
+            value: "psa",
+            valueType: "enum",
+          },
+          {
+            key: "grade",
+            label: "Grade",
+            value: 8,
+            valueType: "number",
+          },
+        ],
+        category: {
+          attributes: [
+            {
+              isRequired: true,
+              key: "grading_company",
+              label: "Grading Company",
+            },
+            {
+              isRequired: true,
+              key: "grade",
+              label: "Grade",
+            },
+          ],
+          id: "cat_cards",
+          name: "Trading Cards",
+          slug: "trading-cards",
+        },
+        conditionCode: "used_good",
+        description: "Clean slab, no cracks, centered well.",
+        media: [
+          {
+            altText: "Front of slab",
+            assetKey: "listings/drafts/lst_123/front.jpg",
+            assetType: "image",
+            createdAt: new Date("2026-03-30T10:00:00.000Z"),
+            id: "med_123",
+            sortOrder: 0,
+          },
+        ],
+        quantityAvailable: 1,
+        title: "1999 Charizard Holo PSA 8",
+        unitPriceMinor: 125000,
+      }),
+    });
+
+    expect(result).toEqual({
+      issues: [
+        {
+          code: "required",
+          field: "shipping_profile",
+          message: "Shipping profile is required.",
+        },
+      ],
+      publishable: false,
+    });
+  });
 });
 
 function createDraftListingRecord(
@@ -120,6 +186,7 @@ function createDraftListingRecord(
       sortOrder: number;
     }>;
     quantityAvailable: number | null;
+    shippingProfileId: string | null;
     title: string | null;
     unitPriceMinor: number | null;
   }> = {},
@@ -131,6 +198,7 @@ function createDraftListingRecord(
     description: null,
     media: [],
     quantityAvailable: null,
+    shippingProfileId: null,
     title: null,
     unitPriceMinor: null,
     ...overrides,

@@ -4,6 +4,7 @@ const {
   createMarketplaceId,
   resolveSellerRequestContext,
   listingRepository,
+  shippingProfileRepository,
   storage
 } = vi.hoisted(() => ({
   createMarketplaceId: vi.fn(),
@@ -16,6 +17,9 @@ const {
     listActiveCategories: vi.fn(),
     publishDraftListing: vi.fn(),
     updateDraftListing: vi.fn()
+  },
+  shippingProfileRepository: {
+    findShippingProfileById: vi.fn()
   },
   storage: {
     getPublicAssetUrl: vi.fn()
@@ -36,6 +40,10 @@ vi.mock("./repository", () => ({
 
 vi.mock("../storage/spaces", () => ({
   getPublicAssetUrl: storage.getPublicAssetUrl
+}));
+
+vi.mock("../shipping-profile/repository", () => ({
+  shippingProfileRepository
 }));
 
 import {
@@ -59,6 +67,7 @@ describe("listing service issue #3", () => {
     listingRepository.listActiveCategories.mockReset();
     listingRepository.publishDraftListing.mockReset();
     listingRepository.updateDraftListing.mockReset();
+    shippingProfileRepository.findShippingProfileById.mockReset();
     storage.getPublicAssetUrl.mockReset();
   });
 
@@ -116,6 +125,11 @@ describe("listing service issue #3", () => {
         },
         {
           code: "required",
+          field: "shipping_profile",
+          message: "Shipping profile is required.",
+        },
+        {
+          code: "required",
           field: "attributes.grading_company",
           message: "Grading Company is required for this category.",
         },
@@ -152,6 +166,61 @@ describe("listing service issue #3", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("creates a draft listing with a seller-owned shipping profile", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    shippingProfileRepository.findShippingProfileById.mockResolvedValue(createShippingProfileRecord());
+    createMarketplaceId.mockReturnValueOnce("lst_123").mockReturnValueOnce("audit_123");
+    listingRepository.createDraftListing.mockResolvedValue(
+      createListingRecord({
+        shipping: createListingShippingRecord(),
+        shippingProfileId: "shp_123",
+      })
+    );
+
+    const result = await createDraftListing(new Request("https://example.com/api/seller/listings", { method: "POST" }), {
+      shippingProfileId: "shp_123",
+    });
+
+    expect(result).toEqual({
+      data: expect.objectContaining({
+        shipping: {
+          currencyCode: "USD",
+          domesticRateMinor: 499,
+          handlingTimeDays: 2,
+          mode: "flat",
+          scope: "us_50_states",
+        },
+        shippingProfileId: "shp_123",
+      }),
+      ok: true,
+    });
+    expect(listingRepository.createDraftListing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shippingProfileId: "shp_123",
+      })
+    );
+  });
+
+  it("rejects using another seller's shipping profile when creating a draft", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext());
+    shippingProfileRepository.findShippingProfileById.mockResolvedValue(
+      createShippingProfileRecord({
+        sellerAccountId: "seller_other",
+      })
+    );
+
+    const result = await createDraftListing(new Request("https://example.com/api/seller/listings", { method: "POST" }), {
+      shippingProfileId: "shp_other",
+    });
+
+    expect(result).toEqual({
+      code: "forbidden",
+      message: "Authenticated seller cannot use that shipping profile.",
+      ok: false,
+      status: 403,
+    });
   });
 
   it("rejects draft numeric fields that exceed the postgres integer range", () => {
@@ -255,6 +324,11 @@ describe("listing service issue #3", () => {
           field: "media",
           message: "At least one image is required.",
         },
+        {
+          code: "required",
+          field: "shipping_profile",
+          message: "Shipping profile is required.",
+        },
       ],
       publishable: false,
     });
@@ -281,6 +355,45 @@ describe("listing service issue #3", () => {
           })
         ],
         expectedUpdatedAt: new Date("2026-03-29T20:00:00.000Z"),
+      })
+    );
+  });
+
+  it("updates a draft listing with a seller-owned shipping profile", async () => {
+    resolveSellerRequestContext.mockResolvedValue(createSellerContext({ eligibilityStatus: "eligible" }));
+    listingRepository.findListingById.mockResolvedValue(createListingRecord());
+    shippingProfileRepository.findShippingProfileById.mockResolvedValue(createShippingProfileRecord());
+    listingRepository.updateDraftListing.mockResolvedValue(
+      createListingRecord({
+        shipping: createListingShippingRecord(),
+        shippingProfileId: "shp_123",
+      })
+    );
+
+    const result = await updateDraftListing(
+      new Request("https://example.com/api/seller/listings/lst_123", { method: "PATCH" }),
+      "lst_123",
+      {
+        shippingProfileId: "shp_123",
+      }
+    );
+
+    expect(result).toEqual({
+      data: expect.objectContaining({
+        shipping: {
+          currencyCode: "USD",
+          domesticRateMinor: 499,
+          handlingTimeDays: 2,
+          mode: "flat",
+          scope: "us_50_states",
+        },
+        shippingProfileId: "shp_123",
+      }),
+      ok: true,
+    });
+    expect(listingRepository.updateDraftListing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shippingProfileId: "shp_123",
       })
     );
   });
@@ -505,6 +618,7 @@ describe("listing service issue #3", () => {
         displayCurrencyCode: "USD",
         media: [createListingMediaRecord()],
         quantityAvailable: 1,
+        shippingProfileId: "shp_123",
         title: "1999 Charizard Holo PSA 8",
         unitPriceMinor: 125000
       })
@@ -558,6 +672,7 @@ describe("listing service issue #3", () => {
           description: "Clean slab, no cracks, centered well.",
           media: [createListingMediaRecord()],
           quantityAvailable: 1,
+          shippingProfileId: "shp_123",
           title: "1999 Charizard Holo PSA 8",
           unitPriceMinor: 125000,
         }),
@@ -586,6 +701,7 @@ describe("listing service issue #3", () => {
           media: [createListingMediaRecord()],
           publishedAt: new Date("2026-03-30T20:15:00.000Z"),
           quantityAvailable: 1,
+          shippingProfileId: "shp_123",
           status: "published",
           title: "1999 Charizard Holo PSA 8",
           unitPriceMinor: 125000,
@@ -629,6 +745,7 @@ describe("listing service issue #3", () => {
       description: "Clean slab, no cracks, centered well.",
       media: [createListingMediaRecord()],
       quantityAvailable: 1,
+      shippingProfileId: "shp_123",
       title: "1999 Charizard Holo PSA 8",
       unitPriceMinor: 125000,
       updatedAt: new Date("2026-03-30T20:10:00.000Z"),
@@ -694,6 +811,8 @@ describe("listing service issue #3", () => {
           ],
           publishedAt: new Date("2026-03-30T11:00:00.000Z"),
           quantityAvailable: 1,
+          shipping: createListingShippingRecord(),
+          shippingProfileId: "shp_123",
           status: "published",
           title: "1999 Charizard Holo PSA 8",
           unitPriceMinor: 125000
@@ -727,6 +846,13 @@ describe("listing service issue #3", () => {
     expect(publishedResult.data.price).toEqual({
       amountMinor: 125000,
       currencyCode: "USD",
+    });
+    expect(publishedResult.data.shipping).toEqual({
+      currencyCode: "USD",
+      domesticRateMinor: 499,
+      handlingTimeDays: 2,
+      mode: "flat",
+      scope: "us_50_states",
     });
     expect(publishedResult.data.status).toBe("published");
     expect(publishedResult.data.title).toBe("1999 Charizard Holo PSA 8");
@@ -835,6 +961,14 @@ function createListingRecord(
       slug: string;
     };
     sellerAccountId: string;
+    shipping: {
+      currencyCode: string;
+      domesticRateMinor: number;
+      handlingTimeDays: 1 | 2 | 3;
+      mode: "flat";
+      scope: "us_50_states";
+    } | null;
+    shippingProfileId: string | null;
     status: "draft" | "published";
     title: string | null;
     unitPriceMinor: number | null;
@@ -862,6 +996,8 @@ function createListingRecord(
       slug: "scarce-cards"
     },
     sellerAccountId: "seller_123",
+    shipping: null,
+    shippingProfileId: null,
     status: "draft" as const,
     title: null,
     unitPriceMinor: null,
@@ -909,5 +1045,47 @@ function createListingAttributeRecord(
     value: "psa",
     valueType: "enum" as const,
     ...overrides
+  };
+}
+
+function createShippingProfileRecord(
+  overrides: Partial<{
+    createdAt: Date;
+    domesticRateMinor: number;
+    handlingTimeDays: 1 | 2 | 3;
+    id: string;
+    name: string;
+    sellerAccountId: string;
+    updatedAt: Date;
+  }> = {}
+) {
+  return {
+    createdAt: new Date("2026-04-01T12:00:00.000Z"),
+    domesticRateMinor: 499,
+    handlingTimeDays: 2 as const,
+    id: "shp_123",
+    name: "Card mailer",
+    sellerAccountId: "seller_123",
+    updatedAt: new Date("2026-04-01T12:00:00.000Z"),
+    ...overrides,
+  };
+}
+
+function createListingShippingRecord(
+  overrides: Partial<{
+    currencyCode: string;
+    domesticRateMinor: number;
+    handlingTimeDays: 1 | 2 | 3;
+    mode: "flat";
+    scope: "us_50_states";
+  }> = {}
+) {
+  return {
+    currencyCode: "USD",
+    domesticRateMinor: 499,
+    handlingTimeDays: 2 as const,
+    mode: "flat" as const,
+    scope: "us_50_states" as const,
+    ...overrides,
   };
 }

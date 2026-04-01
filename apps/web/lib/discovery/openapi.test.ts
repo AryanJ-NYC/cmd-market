@@ -18,6 +18,10 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post).toBeDefined();
     expect(paths["/api/seller/context"]?.get).toBeDefined();
     expect(paths["/api/seller/publishability"]?.get).toBeDefined();
+    expect(paths["/api/seller/shipping-profiles"]?.get).toBeDefined();
+    expect(paths["/api/seller/shipping-profiles"]?.post).toBeDefined();
+    expect(paths["/api/seller/shipping-profiles/{shippingProfileId}"]?.get).toBeDefined();
+    expect(paths["/api/seller/shipping-profiles/{shippingProfileId}"]?.patch).toBeDefined();
     expect(paths["/api/seller/listings"]?.post).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}"]?.get).toBeDefined();
     expect(paths["/api/seller/listings/{listingId}"]?.patch).toBeDefined();
@@ -70,6 +74,25 @@ describe("buildOpenApiDocument", () => {
         code_verifier: expect.any(Object)
       },
       required: ["code_verifier"]
+    });
+    expect(document.components?.schemas?.CreateDraftListingRequest).toMatchObject({
+      properties: {
+        shipping_profile_id: expect.any(Object)
+      }
+    });
+    expect(document.components?.schemas?.UpdateDraftListingRequest).toMatchObject({
+      properties: {
+        shipping_profile_id: expect.any(Object)
+      }
+    });
+    expect(document.components?.schemas?.PublicListingResponse).toMatchObject({
+      properties: {
+        data: {
+          properties: {
+            shipping: expect.any(Object)
+          }
+        }
+      }
     });
   });
 });

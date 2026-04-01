@@ -31,6 +31,7 @@ export class PrismaListingRepository implements ListingRepository {
           id: input.id,
           quantityAvailable: input.quantityAvailable,
           sellerAccountId: input.sellerAccountId,
+          shippingProfileId: input.shippingProfileId,
           status: "draft",
           title: input.title,
           unitPriceMinor: input.unitPriceMinor,
@@ -53,6 +54,7 @@ export class PrismaListingRepository implements ListingRepository {
           id: input.auditEventId,
           metadata: {
             categoryId: input.categoryId ?? null,
+            shippingProfileId: input.shippingProfileId ?? null,
             status: "draft",
           } as Prisma.InputJsonValue,
           note: null,
@@ -160,6 +162,7 @@ export class PrismaListingRepository implements ListingRepository {
           description: input.description,
           displayCurrencyCode: input.displayCurrencyCode,
           quantityAvailable: input.quantityAvailable,
+          shippingProfileId: input.shippingProfileId,
           title: input.title,
           unitPriceMinor: input.unitPriceMinor,
           updatedAt: input.updatedAt,
@@ -232,6 +235,7 @@ export class PrismaListingRepository implements ListingRepository {
           metadata: {
             attributeKeys: input.attributes.map((attribute) => attribute.key),
             categoryId: input.categoryId,
+            shippingProfileId: input.shippingProfileId,
           } as Prisma.InputJsonValue,
           note: null,
           sellerAccountId: input.sellerAccountId,
@@ -388,6 +392,7 @@ const listingInclude = {
       sortOrder: "asc",
     },
   },
+  shippingProfile: true,
   sellerAccount: {
     include: {
       organization: true,
@@ -416,6 +421,8 @@ function mapListingModel(record: ListingModel): ListingRecord {
       slug: record.sellerAccount.organization.slug,
     },
     sellerAccountId: record.sellerAccountId,
+    shipping: record.shippingProfile ? mapShippingProfileModel(record.shippingProfile) : null,
+    shippingProfileId: record.shippingProfileId,
     status: record.status,
     title: record.title,
     unitPriceMinor: record.unitPriceMinor,
@@ -454,6 +461,23 @@ function mapListingMediaModel(record: PrismaListingMediaModel): ListingMediaReco
     createdAt: record.createdAt,
     id: record.id,
     sortOrder: record.sortOrder,
+  };
+}
+
+function mapShippingProfileModel(
+  record: {
+    domesticRateMinor: number;
+    handlingTimeDays: number;
+    id: string;
+  },
+): ListingShippingRecord {
+  return {
+    currencyCode: "USD",
+    domesticRateMinor: record.domesticRateMinor,
+    handlingTimeDays: toHandlingTimeDays(record.handlingTimeDays),
+    id: record.id,
+    mode: "flat",
+    scope: "us_50_states",
   };
 }
 
@@ -509,6 +533,14 @@ function toAllowedValues(value: Prisma.JsonValue | null): string[] | null {
   }
 
   return value.every((item) => typeof item === "string") ? value : null;
+}
+
+function toHandlingTimeDays(value: number): 1 | 2 | 3 {
+  if (value === 1 || value === 2 || value === 3) {
+    return value;
+  }
+
+  throw new Error(`Unknown shipping handling time days: ${value}`);
 }
 
 function toNullableJsonValue(value: Prisma.InputJsonValue | null) {
@@ -584,12 +616,23 @@ export type ListingRecord = {
   quantityAvailable: number | null;
   seller: ListingSellerRecord;
   sellerAccountId: string;
+  shipping: ListingShippingRecord | null;
+  shippingProfileId: string | null;
   status: ListingStatus;
   title: string | null;
   unitPriceMinor: number | null;
   updatedAt: Date;
   updatedByApiKeyId: string | null;
   updatedByUserId: string | null;
+};
+
+export type ListingShippingRecord = {
+  currencyCode: "USD";
+  domesticRateMinor: number;
+  handlingTimeDays: 1 | 2 | 3;
+  id: string;
+  mode: "flat";
+  scope: "us_50_states";
 };
 
 export type ListingMediaRecord = {
@@ -644,6 +687,7 @@ type CreateDraftListingInput = {
   id: string;
   quantityAvailable: number | null;
   sellerAccountId: string;
+  shippingProfileId: string | null;
   title: string | null;
   unitPriceMinor: number | null;
   updatedAt: Date;
@@ -690,6 +734,7 @@ type UpdateDraftListingInput = {
   quantityAvailable: number | null;
   removeCategoryAttributeIds: string[];
   sellerAccountId: string;
+  shippingProfileId: string | null;
   title: string | null;
   unitPriceMinor: number | null;
   updatedAt: Date;

@@ -80,6 +80,14 @@ export function getDraftListingValidation({
     });
   }
 
+  if (listing.shippingProfileId == null) {
+    issues.push({
+      code: "required",
+      field: "shipping_profile",
+      message: "Shipping profile is required."
+    });
+  }
+
   if (listing.category) {
     const attributeKeys = new Set(listing.attributes.map((attribute) => attribute.key));
 
@@ -154,6 +162,7 @@ type DraftListingValidationInput = {
     sortOrder: number;
   }>;
   quantityAvailable: number | null;
+  shippingProfileId: string | null;
   title: string | null;
   unitPriceMinor: number | null;
 };

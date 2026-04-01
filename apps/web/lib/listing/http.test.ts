@@ -54,6 +54,14 @@ describe("listing/http", () => {
       },
       publishedAt: null,
       quantityAvailable: 1,
+      shipping: {
+        currencyCode: "USD",
+        domesticRateMinor: 499,
+        handlingTimeDays: 2,
+        mode: "flat",
+        scope: "us_50_states"
+      },
+      shippingProfileId: "shp_123",
       seller: {
         displayName: "Scarce City",
         id: "sel_123",
@@ -93,6 +101,13 @@ describe("listing/http", () => {
       },
       publishedAt: "2026-03-30T20:00:00.000Z",
       quantityAvailable: 1,
+      shipping: {
+        currencyCode: "USD",
+        domesticRateMinor: 499,
+        handlingTimeDays: 2,
+        mode: "flat",
+        scope: "us_50_states"
+      },
       seller: {
         displayName: "Scarce City",
         id: "sel_123",
