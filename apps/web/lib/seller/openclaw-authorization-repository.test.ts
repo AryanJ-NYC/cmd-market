@@ -5,6 +5,7 @@ const { prisma } = vi.hoisted(() => ({
     $transaction: vi.fn(),
     apikey: {
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn()
     },
@@ -30,6 +31,7 @@ describe("openclaw authorization session repository", () => {
   beforeEach(() => {
     prisma.$transaction.mockReset();
     prisma.apikey.delete.mockReset();
+    prisma.apikey.deleteMany.mockReset();
     prisma.apikey.findFirst.mockReset();
     prisma.apikey.update.mockReset();
     prisma.auditEvent.create.mockReset();
@@ -286,7 +288,7 @@ describe("openclaw authorization session repository", () => {
     });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(prisma.apikey.delete).toHaveBeenCalledWith({
+    expect(prisma.apikey.deleteMany).toHaveBeenCalledWith({
       where: {
         id: "key_existing"
       }
@@ -372,12 +374,67 @@ describe("openclaw authorization session repository", () => {
       sessionId: "auth_123"
     });
 
-    expect(prisma.apikey.delete).not.toHaveBeenCalled();
+    expect(prisma.apikey.deleteMany).not.toHaveBeenCalled();
     expect(prisma.apikey.update).not.toHaveBeenCalled();
     expect(prisma.auditEvent.create).not.toHaveBeenCalled();
     expect(redeemed).toEqual({
       applied: false,
       session: expiredRecord
+    });
+  });
+
+  it("continues redeem rotation when the previous api key was already removed", async () => {
+    const redeemedRecord = createAuthorizationSessionRecord({
+      authorizedAt: new Date("2026-03-31T03:10:00.000Z"),
+      authorizedByUserId: "user_123",
+      organizationId: "org_123",
+      redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
+      status: "redeemed",
+      updatedAt: new Date("2026-03-31T03:11:00.000Z")
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<AuthorizationSessionMutationResult>) => callback(prisma)
+    );
+    prisma.openClawAuthorizationSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.openClawAuthorizationSession.findFirst.mockResolvedValue(redeemedRecord);
+    prisma.apikey.deleteMany.mockResolvedValue({ count: 0 });
+
+    const redeemed = await openClawAuthorizationSessionRepository.redeemSessionWithApiKeyRotation({
+      auditEvent: createAuditEventRecord({
+        action: "openclaw_authorization.redeemed",
+        actorType: "system",
+        actorUserId: null,
+        metadata: {
+          newApiKeyId: "key_new",
+          organizationId: "org_123",
+          replacedApiKeyId: "key_existing",
+          sessionStatus: "redeemed"
+        },
+        note: "OpenClaw authorization session was redeemed into a seller API key."
+      }),
+      newApiKeyId: "key_new",
+      previousApiKeyId: "key_existing",
+      redeemedAt: new Date("2026-03-31T03:11:00.000Z"),
+      sessionId: "auth_123"
+    });
+
+    expect(prisma.apikey.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: "key_existing"
+      }
+    });
+    expect(prisma.apikey.update).toHaveBeenCalledWith({
+      data: {
+        configId: "openclaw"
+      },
+      where: {
+        id: "key_new"
+      }
+    });
+    expect(prisma.auditEvent.create).toHaveBeenCalledTimes(1);
+    expect(redeemed).toEqual({
+      applied: true,
+      session: redeemedRecord
     });
   });
 });

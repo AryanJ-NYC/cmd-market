@@ -7,6 +7,7 @@ import {
   createWorkspaceAndAuthorizeOpenClawAuthorizationAction,
   rejectOpenClawAuthorizationAction
 } from "./actions";
+import { getWorkspaceFieldInputProps } from "./workspace-field";
 import { getOpenClawAuthorizationPageState } from "../../../../../lib/seller/service";
 
 export const metadata: Metadata = {
@@ -83,7 +84,7 @@ export default async function OpenClawAuthorizationPage({
                   </label>
                   <input
                     className="w-full rounded-2xl border border-stone-800 bg-stone-900 px-4 py-3 text-sm text-stone-100 outline-none ring-0 placeholder:text-stone-500"
-                    defaultValue={getWorkspaceFieldValue(
+                    {...getWorkspaceFieldInputProps(
                       resolvedSearchParams.name,
                       state.proposedWorkspace.name
                     )}
@@ -99,7 +100,7 @@ export default async function OpenClawAuthorizationPage({
                   </label>
                   <input
                     className="w-full rounded-2xl border border-stone-800 bg-stone-900 px-4 py-3 text-sm text-stone-100 outline-none ring-0 placeholder:text-stone-500"
-                    defaultValue={getWorkspaceFieldValue(
+                    {...getWorkspaceFieldInputProps(
                       resolvedSearchParams.slug,
                       state.proposedWorkspace.slug
                     )}
@@ -226,10 +227,6 @@ function getTerminalPanelClassName(tone: OpenClawAuthorizationTone) {
   }
 
   return "rounded-2xl border border-stone-800 bg-stone-900/70 px-4 py-3 text-sm text-stone-300";
-}
-
-function getWorkspaceFieldValue(value: string | string[] | undefined, fallbackValue: string) {
-  return typeof value === "string" ? value : fallbackValue;
 }
 
 function getTerminalTitle(status: OpenClawTerminalStatus) {

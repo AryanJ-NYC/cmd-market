@@ -205,7 +205,7 @@ export class PrismaOpenClawAuthorizationSessionRepository {
       }
 
       if (input.previousApiKeyId) {
-        await transaction.apikey.delete({
+        await transaction.apikey.deleteMany({
           where: {
             id: input.previousApiKeyId
           }
