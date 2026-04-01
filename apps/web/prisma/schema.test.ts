@@ -52,6 +52,20 @@ describe("prisma seller eligibility schema", () => {
     expect(schema).toContain("@unique([listingId, assetKey])");
   });
 
+  it("defines seller-owned shipping profiles and listing shipping references in the schema", () => {
+    const schema = readPrismaFile("schema.prisma");
+
+    expect(schema).toContain("model shippingProfile {");
+    expect(schema).toContain("sellerAccountId");
+    expect(schema).toContain('@map("seller_account_id")');
+    expect(schema).toContain("domesticRateMinor");
+    expect(schema).toContain('@map("domestic_rate_minor")');
+    expect(schema).toContain("handlingTimeDays");
+    expect(schema).toContain('@map("handling_time_days")');
+    expect(schema).toContain("shippingProfileId");
+    expect(schema).toContain('@map("shipping_profile_id")');
+  });
+
   it("creates listing and listing_media tables in the initial migration", () => {
     const migration = readAllMigrationSql();
 
@@ -61,6 +75,23 @@ describe("prisma seller eligibility schema", () => {
     expect(migration).toContain('"listing_id" TEXT NOT NULL');
     expect(migration).toContain(
       'CREATE UNIQUE INDEX "listing_media_listing_id_asset_key_key" ON "listing_media"("listing_id", "asset_key");'
+    );
+  });
+
+  it("creates shipping_profile persistence and listing shipping foreign keys in migrations", () => {
+    const migration = readAllMigrationSql();
+
+    expect(migration).toContain('CREATE TABLE "shipping_profile"');
+    expect(migration).toContain('"seller_account_id" TEXT NOT NULL');
+    expect(migration).toContain('"domestic_rate_minor" INTEGER NOT NULL');
+    expect(migration).toContain('"handling_time_days" INTEGER NOT NULL');
+    expect(migration).toContain('CREATE INDEX "shipping_profile_seller_account_id_idx"');
+    expect(migration).toContain('CREATE INDEX "listing_shipping_profile_id_idx"');
+    expect(migration).toContain('ALTER TABLE "listing" ADD CONSTRAINT "listing_shipping_profile_id_fkey"');
+    expect(migration).toContain('ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_domestic_rate_minor_nonnegative"');
+    expect(migration).toContain('ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_handling_time_days_valid"');
+    expect(migration).toContain(
+      'ALTER TABLE "listing" ADD CONSTRAINT "listing_non_draft_requires_shipping_profile" CHECK ("status" = \'draft\' OR "shipping_profile_id" IS NOT NULL) NOT VALID;'
     );
   });
 

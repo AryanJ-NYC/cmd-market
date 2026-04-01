@@ -13,10 +13,14 @@ describe("buildLlmsText", () => {
     expect(llms).toContain("## Public APIs");
     expect(llms).toContain("[POST /api/openclaw/authorization-sessions](/api/openclaw/authorization-sessions)");
     expect(llms).toContain("[GET /api/categories](/api/categories)");
+    expect(llms).toContain("[GET /api/seller/shipping-profiles](/api/seller/shipping-profiles)");
     expect(llms).toContain("[POST /api/seller/listings/{listingId}/publish](/api/seller/listings/{listingId}/publish)");
     expect(llms).toContain("[OpenAPI](/openapi.json)");
     expect(llms).toContain("Browser `/seller/*` routes require a browser session.");
     expect(llms).toContain("API keys authenticate seller API routes only.");
+    expect(llms).toContain("Sellers manage reusable shipping profiles");
+    expect(llms).toContain("US 50 states + DC");
+    expect(llms).toContain("normalized flat domestic shipping");
     expect(llms).toContain(
       "CMD Market is built to support many agent clients"
     );

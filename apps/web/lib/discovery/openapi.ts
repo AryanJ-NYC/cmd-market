@@ -21,6 +21,14 @@ import {
   uploadSessionsResponseSchema
 } from "../listing/http";
 import {
+  createShippingProfileSchema,
+  updateShippingProfileSchema
+} from "../shipping-profile/service";
+import {
+  shippingProfileListResponseSchema,
+  shippingProfileResponseSchema
+} from "../shipping-profile/http";
+import {
   openClawAuthorizationSessionCreateRequestSchema,
   openClawAuthorizationSessionCreateResponseSchema,
   openClawAuthorizationSessionRedeemResponseSchema,
@@ -53,21 +61,39 @@ const listingIdPathParamsSchema = z.object({
   })
 });
 
+const shippingProfileIdPathParamsSchema = z.object({
+  shippingProfileId: z.string().meta({
+    description: "Shipping profile identifier.",
+    example: "shp_123"
+  })
+});
+
 export function buildOpenApiDocument() {
-  const createOpenClawAuthorizationSessionRoute = findSellerApiRoute("/api/openclaw/authorization-sessions");
-  const openClawAuthorizationSessionStatusRoute = findSellerApiRoute(
-    "/api/openclaw/authorization-sessions/{sessionId}/status"
+  const createOpenClawAuthorizationSessionRoute = findSellerApiRouteByTitle(
+    "POST /api/openclaw/authorization-sessions"
   );
-  const openClawAuthorizationSessionRedeemRoute = findSellerApiRoute(
-    "/api/openclaw/authorization-sessions/{sessionId}/redeem"
+  const openClawAuthorizationSessionStatusRoute = findSellerApiRouteByTitle(
+    "POST /api/openclaw/authorization-sessions/{sessionId}/status"
   );
-  const sellerContextRoute = findSellerApiRoute("/api/seller/context");
-  const sellerPublishabilityRoute = findSellerApiRoute("/api/seller/publishability");
-  const sellerListingsRoute = findSellerApiRoute("/api/seller/listings");
-  const sellerListingRoute = findSellerApiRoute("/api/seller/listings/{listingId}");
-  const sellerUploadSessionsRoute = findSellerApiRoute("/api/seller/upload-sessions");
-  const sellerListingMediaRoute = findSellerApiRoute("/api/seller/listings/{listingId}/media");
-  const sellerListingPublishRoute = findSellerApiRoute("/api/seller/listings/{listingId}/publish");
+  const openClawAuthorizationSessionRedeemRoute = findSellerApiRouteByTitle(
+    "POST /api/openclaw/authorization-sessions/{sessionId}/redeem"
+  );
+  const sellerContextRoute = findSellerApiRouteByTitle("GET /api/seller/context");
+  const sellerPublishabilityRoute = findSellerApiRouteByTitle("GET /api/seller/publishability");
+  const sellerShippingProfilesRoute = findSellerApiRouteByTitle("GET /api/seller/shipping-profiles");
+  const sellerShippingProfilesCreateRoute = findSellerApiRouteByTitle("POST /api/seller/shipping-profiles");
+  const sellerShippingProfileRoute = findSellerApiRouteByTitle(
+    "GET /api/seller/shipping-profiles/{shippingProfileId}"
+  );
+  const sellerShippingProfilePatchRoute = findSellerApiRouteByTitle(
+    "PATCH /api/seller/shipping-profiles/{shippingProfileId}"
+  );
+  const sellerListingsRoute = findSellerApiRouteByTitle("POST /api/seller/listings");
+  const sellerListingRoute = findSellerApiRouteByTitle("GET /api/seller/listings/{listingId}");
+  const sellerListingPatchRoute = findSellerApiRouteByTitle("PATCH /api/seller/listings/{listingId}");
+  const sellerUploadSessionsRoute = findSellerApiRouteByTitle("POST /api/seller/upload-sessions");
+  const sellerListingMediaRoute = findSellerApiRouteByTitle("POST /api/seller/listings/{listingId}/media");
+  const sellerListingPublishRoute = findSellerApiRouteByTitle("POST /api/seller/listings/{listingId}/publish");
 
   return createDocument({
     components: {
@@ -261,7 +287,7 @@ export function buildOpenApiDocument() {
               "404": errorResponse("Draft listing could not be found.")
             },
             success: {
-              description: sellerListingRoute.description,
+              description: sellerListingPatchRoute.description,
               schema: sellerListingResponseSchema
             }
           }),
@@ -344,6 +370,79 @@ export function buildOpenApiDocument() {
           },
           security: [{ browserSession: [] }, { sellerApiKey: [] }],
           summary: "Publish a draft listing"
+        }
+      },
+      "/api/seller/shipping-profiles": {
+        get: {
+          description:
+            "Lists seller-owned flat domestic shipping profiles. API keys do not authenticate browser `/seller/*` routes.",
+          responses: sellerResponses({
+            success: {
+              description: sellerShippingProfilesRoute.description,
+              schema: shippingProfileListResponseSchema
+            }
+          }),
+          security: [{ browserSession: [] }, { sellerApiKey: [] }],
+          summary: "List shipping profiles"
+        },
+        post: {
+          description:
+            "Creates a seller-owned flat domestic shipping profile. API keys do not authenticate browser `/seller/*` routes.",
+          requestBody: jsonRequestBody(
+            createShippingProfileSchema,
+            "Seller-owned flat domestic shipping profile request payload.",
+            true
+          ),
+          responses: sellerResponses({
+            success: {
+              description: sellerShippingProfilesCreateRoute.description,
+              schema: shippingProfileResponseSchema
+            }
+          }),
+          security: [{ browserSession: [] }, { sellerApiKey: [] }],
+          summary: "Create a shipping profile"
+        }
+      },
+      "/api/seller/shipping-profiles/{shippingProfileId}": {
+        get: {
+          description:
+            "Reads one seller-owned flat domestic shipping profile. API keys do not authenticate browser `/seller/*` routes.",
+          requestParams: {
+            path: shippingProfileIdPathParamsSchema
+          },
+          responses: sellerResponses({
+            additional: {
+              "404": errorResponse("Shipping profile could not be found.")
+            },
+            success: {
+              description: sellerShippingProfileRoute.description,
+              schema: shippingProfileResponseSchema
+            }
+          }),
+          security: [{ browserSession: [] }, { sellerApiKey: [] }],
+          summary: "Read a shipping profile"
+        },
+        patch: {
+          description:
+            "Patches one seller-owned flat domestic shipping profile. API keys do not authenticate browser `/seller/*` routes.",
+          requestBody: jsonRequestBody(
+            updateShippingProfileSchema,
+            "Seller-owned flat domestic shipping profile patch payload."
+          ),
+          requestParams: {
+            path: shippingProfileIdPathParamsSchema
+          },
+          responses: sellerResponses({
+            additional: {
+              "404": errorResponse("Shipping profile could not be found.")
+            },
+            success: {
+              description: sellerShippingProfilePatchRoute.description,
+              schema: shippingProfileResponseSchema
+            }
+          }),
+          security: [{ browserSession: [] }, { sellerApiKey: [] }],
+          summary: "Patch a shipping profile"
         }
       },
       "/api/seller/publishability": {
@@ -465,11 +564,11 @@ function errorResponse(description: string) {
   };
 }
 
-function findSellerApiRoute(href: string) {
-  const route = sellerApiRoutes.find((item) => item.href === href);
+function findSellerApiRouteByTitle(title: string) {
+  const route = sellerApiRoutes.find((item) => item.title === title);
 
   if (!route) {
-    throw new Error(`Missing seller API route: ${href}`);
+    throw new Error(`Missing seller API route: ${title}`);
   }
 
   return route;

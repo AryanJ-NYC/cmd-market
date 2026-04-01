@@ -6,6 +6,7 @@ import { resolveSellerRequestContext } from "../seller/service";
 import {
   assertUploadedAssetExists,
   buildDraftAssetKey,
+  createPresignedDownloadUrl,
   createPresignedUploadRequest,
   getPublicAssetUrl,
   MissingUploadedAssetError,
@@ -16,6 +17,7 @@ import {
   type DraftListingValidationIssue,
   type ListingValidationProblem,
 } from "./domain";
+import { shippingProfileRepository } from "../shipping-profile/repository";
 import {
   DuplicateListingMediaAssetKeyError,
   type CategoryAttributeRecord,
@@ -57,6 +59,20 @@ export async function createDraftListing(
     return categoryResult;
   }
 
+  const shippingProfileResult = input.shippingProfileId
+    ? await getRequiredShippingProfile(
+        input.shippingProfileId,
+        sellerContext.context.sellerAccountId,
+      )
+    : {
+        data: null,
+        ok: true as const,
+      };
+
+  if (!shippingProfileResult.ok) {
+    return shippingProfileResult;
+  }
+
   const now = new Date();
   const listingId = createMarketplaceId();
   const listing = await listingRepository.createDraftListing({
@@ -71,6 +87,7 @@ export async function createDraftListing(
     id: listingId,
     quantityAvailable: input.quantityAvailable ?? null,
     sellerAccountId: sellerContext.context.sellerAccountId,
+    shippingProfileId: shippingProfileResult.data?.id ?? null,
     title: input.title ?? null,
     unitPriceMinor: input.price?.amountMinor ?? null,
     updatedAt: now,
@@ -146,6 +163,28 @@ export async function updateDraftListing(
     return targetCategory;
   }
 
+  const targetShippingProfile = input.shippingProfileId
+    ? await getRequiredShippingProfile(
+        input.shippingProfileId,
+        sellerContext.context.sellerAccountId,
+      )
+    : {
+        data: existingListing.shippingProfileId
+          ? existingListing.shipping
+            ? {
+                id: existingListing.shippingProfileId,
+              }
+            : {
+                id: existingListing.shippingProfileId,
+              }
+          : null,
+        ok: true as const,
+      };
+
+  if (!targetShippingProfile.ok) {
+    return targetShippingProfile;
+  }
+
   const attributeBuild = buildAttributeMutation({
     attributes: input.attributes,
     currentListingAttributes: existingListing.attributes,
@@ -169,6 +208,7 @@ export async function updateDraftListing(
     quantityAvailable: input.quantityAvailable ?? existingListing.quantityAvailable,
     removeCategoryAttributeIds: attributeBuild.data.removeCategoryAttributeIds,
     sellerAccountId: sellerContext.context.sellerAccountId,
+    shippingProfileId: targetShippingProfile.data?.id ?? null,
     title: input.title ?? existingListing.title,
     unitPriceMinor: input.price?.amountMinor ?? existingListing.unitPriceMinor,
     updatedAt: now,
@@ -310,7 +350,7 @@ export async function getPublicListing(
 ): Promise<PublicResult<PublicListingResource>> {
   const listing = await listingRepository.findListingById(listingId);
 
-  if (!listing || listing.status !== "published") {
+  if (!listing || listing.status !== "published" || listing.shipping == null) {
     return {
       code: "listing_not_found",
       message: "Published listing could not be found.",
@@ -354,7 +394,7 @@ export async function getPublishedListingMedia(
   return {
     data: {
       altText: media.altText,
-      assetUrl: getPublicAssetUrl(media.assetKey),
+      assetUrl: await createPresignedDownloadUrl(media.assetKey),
       id: media.id,
       listingId,
       sortOrder: media.sortOrder,
@@ -608,6 +648,10 @@ const draftListingFieldsSchema = z.object({
     description: "Optional available quantity.",
     example: 1,
   }),
+  shipping_profile_id: z.string().trim().min(1).optional().meta({
+    description: "Optional seller-owned shipping profile identifier.",
+    example: "shp_123",
+  }),
   title: z.string().trim().min(1).optional().meta({
     description: "Optional listing title.",
     example: "1999 Charizard Holo PSA 8",
@@ -694,6 +738,7 @@ export function parseDraftListingMutationInput(
         }
       : undefined,
     quantityAvailable: input.quantity_available,
+    shippingProfileId: input.shipping_profile_id,
     title: input.title,
   };
 }
@@ -738,6 +783,17 @@ function serializeSellerListing(
           },
     publishedAt: listing.publishedAt?.toISOString() ?? null,
     quantityAvailable: listing.quantityAvailable,
+    shipping:
+      listing.shipping == null
+        ? null
+        : {
+            currencyCode: listing.shipping.currencyCode,
+            domesticRateMinor: listing.shipping.domesticRateMinor,
+            handlingTimeDays: listing.shipping.handlingTimeDays,
+            mode: listing.shipping.mode,
+            scope: listing.shipping.scope,
+          },
+    shippingProfileId: listing.shippingProfileId,
     seller: listing.seller,
     status: listing.status,
     title: listing.title,
@@ -778,10 +834,25 @@ function serializePublicListing(
           },
     publishedAt: listing.publishedAt?.toISOString() ?? null,
     quantityAvailable: listing.quantityAvailable,
+    shipping: serializeRequiredListingShipping(listing.shipping),
     seller: listing.seller,
     status: listing.status,
     title: listing.title,
     updatedAt: listing.updatedAt.toISOString(),
+  };
+}
+
+function serializeRequiredListingShipping(shipping: ListingRecord["shipping"]) {
+  if (shipping == null) {
+    throw new Error("Published listings must include shipping.");
+  }
+
+  return {
+    currencyCode: shipping.currencyCode,
+    domesticRateMinor: shipping.domesticRateMinor,
+    handlingTimeDays: shipping.handlingTimeDays,
+    mode: shipping.mode,
+    scope: shipping.scope,
   };
 }
 
@@ -836,6 +907,26 @@ function getPublishValidationIssues(
   }
 
   return issues;
+}
+
+async function getRequiredShippingProfile(
+  shippingProfileId: string,
+  sellerAccountId: string,
+) {
+  const shippingProfile = await shippingProfileRepository.findShippingProfileById(shippingProfileId);
+
+  if (!shippingProfile) {
+    return notFound("Shipping profile could not be found.");
+  }
+
+  if (shippingProfile.sellerAccountId !== sellerAccountId) {
+    return forbidden("Authenticated seller cannot use that shipping profile.");
+  }
+
+  return {
+    data: shippingProfile,
+    ok: true as const,
+  };
 }
 
 function buildAttributeMutation({
@@ -1152,6 +1243,7 @@ type DraftListingMutationInput = {
     currencyCode: string;
   };
   quantityAvailable?: number;
+  shippingProfileId?: string;
   title?: string;
 };
 
@@ -1214,6 +1306,13 @@ type BaseListingResource = {
   } | null;
   publishedAt: string | null;
   quantityAvailable: number | null;
+  shipping: {
+    currencyCode: "USD";
+    domesticRateMinor: number;
+    handlingTimeDays: 1 | 2 | 3;
+    mode: "flat";
+    scope: "us_50_states";
+  } | null;
   seller: {
     displayName: string;
     id: string;
@@ -1239,6 +1338,7 @@ export type SellerListingResource = BaseListingResource & {
     sortOrder: number;
     url: string;
   }>;
+  shippingProfileId: string | null;
 };
 
 export type PublicListingResource = BaseListingResource & {
@@ -1249,6 +1349,13 @@ export type PublicListingResource = BaseListingResource & {
     sortOrder: number;
     url: string;
   }>;
+  shipping: {
+    currencyCode: "USD";
+    domesticRateMinor: number;
+    handlingTimeDays: 1 | 2 | 3;
+    mode: "flat";
+    scope: "us_50_states";
+  };
 };
 
 export type PublishedListingMediaResource = {

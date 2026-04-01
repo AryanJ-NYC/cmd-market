@@ -49,6 +49,19 @@ const listingPriceSchema = z
     id: "ListingPrice",
   });
 
+const listingShippingSchema = z
+  .object({
+    currency_code: z.literal("USD"),
+    domestic_rate_minor: z.number().int().nonnegative(),
+    handling_time_days: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    mode: z.literal("flat"),
+    scope: z.literal("us_50_states"),
+  })
+  .meta({
+    description: "Normalized flat domestic shipping summary.",
+    id: "ListingShipping",
+  });
+
 const listingSellerSchema = z
   .object({
     display_name: z.string(),
@@ -116,6 +129,8 @@ export const sellerListingResponseSchema = z
       price: listingPriceSchema.nullable(),
       published_at: z.string().nullable(),
       quantity_available: z.number().int().nullable(),
+      shipping: listingShippingSchema.nullable(),
+      shipping_profile_id: z.string().nullable(),
       seller: listingSellerSchema,
       status: z.string(),
       title: z.string().nullable(),
@@ -141,6 +156,7 @@ export const publicListingResponseSchema = z
       price: listingPriceSchema.nullable(),
       published_at: z.string().nullable(),
       quantity_available: z.number().int().nullable(),
+      shipping: listingShippingSchema,
       seller: listingSellerSchema,
       status: z.string(),
       title: z.string().nullable(),
@@ -282,6 +298,16 @@ export function serializeSellerListingResponse(listing: SellerListingResource) {
         : null,
       published_at: listing.publishedAt,
       quantity_available: listing.quantityAvailable,
+      shipping: listing.shipping
+        ? {
+            currency_code: listing.shipping.currencyCode,
+            domestic_rate_minor: listing.shipping.domesticRateMinor,
+            handling_time_days: listing.shipping.handlingTimeDays,
+            mode: listing.shipping.mode,
+            scope: listing.shipping.scope,
+          }
+        : null,
+      shipping_profile_id: listing.shippingProfileId,
       seller: {
         display_name: listing.seller.displayName,
         id: listing.seller.id,
@@ -329,6 +355,15 @@ export function serializePublicListingResponse(listing: PublicListingResource) {
         : null,
       published_at: listing.publishedAt,
       quantity_available: listing.quantityAvailable,
+      shipping: listing.shipping
+        ? {
+            currency_code: listing.shipping.currencyCode,
+            domestic_rate_minor: listing.shipping.domesticRateMinor,
+            handling_time_days: listing.shipping.handlingTimeDays,
+            mode: listing.shipping.mode,
+            scope: listing.shipping.scope,
+          }
+        : null,
       seller: {
         display_name: listing.seller.displayName,
         id: listing.seller.id,

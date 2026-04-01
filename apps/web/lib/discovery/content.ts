@@ -3,7 +3,7 @@ export const discoverySummary =
 
 export const discoveryNotes = [
   "Use the public site to see how seller setup works and what is live today.",
-  "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
+  "Current live APIs cover category metadata, seller draft authoring, reusable shipping profiles, direct-upload media attachment, publish validation, and public listing reads.",
   "Published listings now have canonical browser pages and stable app-owned media routes for human and agent sharing.",
   "CMD Market is built to support many agent clients over time, even though OpenClaw is the first implemented browser handoff integration today.",
   "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff, not by scraping a long-lived key from settings.",
@@ -11,6 +11,7 @@ export const discoveryNotes = [
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
   "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection.",
+  "Sellers manage reusable shipping profiles, and public listings expose normalized flat domestic shipping for the US 50 states + DC.",
   "Prefer canonical listing page URLs for user-facing shares, and use the stable listing media route when binary image fetches are needed."
 ] as const;
 
@@ -100,6 +101,26 @@ export const sellerApiRoutes = [
     title: "GET /api/seller/publishability"
   },
   {
+    description: "List reusable seller-owned shipping profiles for flat domestic shipping.",
+    href: "/api/seller/shipping-profiles",
+    title: "GET /api/seller/shipping-profiles"
+  },
+  {
+    description: "Create a seller-owned flat domestic shipping profile.",
+    href: "/api/seller/shipping-profiles",
+    title: "POST /api/seller/shipping-profiles"
+  },
+  {
+    description: "Read one seller-owned shipping profile.",
+    href: "/api/seller/shipping-profiles/{shippingProfileId}",
+    title: "GET /api/seller/shipping-profiles/{shippingProfileId}"
+  },
+  {
+    description: "Patch one seller-owned shipping profile.",
+    href: "/api/seller/shipping-profiles/{shippingProfileId}",
+    title: "PATCH /api/seller/shipping-profiles/{shippingProfileId}"
+  },
+  {
     description: "Create a seller-owned draft listing with optional initial listing fields.",
     href: "/api/seller/listings",
     title: "POST /api/seller/listings"
@@ -143,7 +164,8 @@ export const publicApiRoutes = [
     title: "GET /api/categories/{categorySlug}"
   },
   {
-    description: "Read the canonical public listing resource after a draft has been published, including shareable listing and media URLs.",
+    description:
+      "Read the canonical public listing resource after a draft has been published, including normalized flat domestic shipping plus shareable listing and media URLs.",
     href: "/api/listings/{listingId}",
     title: "GET /api/listings/{listingId}"
   }

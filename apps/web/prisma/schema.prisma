@@ -209,6 +209,7 @@ model sellerAccount {
   updatedAt                  DateTime                @updatedAt @map("updated_at")
   auditEvents                auditEvent[]
   listings                   listing[]
+  shippingProfiles           shippingProfile[]
   organization               organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("seller_account")
@@ -314,6 +315,7 @@ model auditEvent {
 model listing {
   id                 String                 @id
   sellerAccountId    String                 @map("seller_account_id")
+  shippingProfileId  String?                @map("shipping_profile_id")
   categoryId         String?                @map("category_id")
   title              String?
   description        String?
@@ -336,12 +338,29 @@ model listing {
   createdByUser      user?                  @relation("listingCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
   media              listingMedia[]
   sellerAccount      sellerAccount          @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
+  shippingProfile    shippingProfile?       @relation(fields: [shippingProfileId], references: [id], onDelete: SetNull)
   updatedByApiKey    apikey?                @relation("listingUpdatedByApiKey", fields: [updatedByApiKeyId], references: [id], onDelete: SetNull)
   updatedByUser      user?                  @relation("listingUpdatedByUser", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([sellerAccountId])
+  @@index([shippingProfileId])
   @@index([categoryId])
   @@map("listing")
+}
+
+model shippingProfile {
+  id                String         @id
+  sellerAccountId   String         @map("seller_account_id")
+  name              String
+  domesticRateMinor Int            @map("domestic_rate_minor")
+  handlingTimeDays  Int            @map("handling_time_days")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  listings          listing[]
+  sellerAccount     sellerAccount  @relation(fields: [sellerAccountId], references: [id], onDelete: Cascade)
+
+  @@index([sellerAccountId])
+  @@map("shipping_profile")
 }
 
 model listingMedia {
