@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { authClient } from "../../lib/auth-client";
 
-export function SignInButton({ twitterEnabled }: SignInButtonProps) {
+export function SignInButton({ callbackUrl, twitterEnabled }: SignInButtonProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -17,7 +17,7 @@ export function SignInButton({ twitterEnabled }: SignInButtonProps) {
     startTransition(async () => {
       try {
         await authClient.signIn.social({
-          callbackURL: "/seller/workspace",
+          callbackURL: callbackUrl,
           provider: "twitter"
         });
       } catch (caughtError) {
@@ -45,5 +45,6 @@ export function SignInButton({ twitterEnabled }: SignInButtonProps) {
 }
 
 type SignInButtonProps = {
+  callbackUrl: string;
   twitterEnabled: boolean;
 };

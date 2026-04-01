@@ -35,21 +35,31 @@ enum AttributeValueType {
   json
 }
 
+enum OpenClawAuthorizationSessionStatus {
+  pending
+  authorized
+  rejected
+  cancelled
+  expired
+  redeemed
+}
+
 model user {
-  id              String       @id @default(cuid())
-  name            String
-  email           String       @unique
-  emailVerified   Boolean      @default(false)
-  image           String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  accounts        account[]
-  auditEvents     auditEvent[] @relation("auditEventActorUser")
-  createdListings listing[]    @relation("listingCreatedByUser")
-  invitationsSent invitation[] @relation("invitationInviter")
-  members         member[]
-  sessions        session[]
-  updatedListings listing[]    @relation("listingUpdatedByUser")
+  id                            String                         @id @default(cuid())
+  name                          String
+  email                         String                         @unique
+  emailVerified                 Boolean                        @default(false)
+  image                         String?
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  accounts                      account[]
+  auditEvents                   auditEvent[]                   @relation("auditEventActorUser")
+  authorizedOpenClawSessions    openClawAuthorizationSession[] @relation("openClawAuthorizationSessionAuthorizedByUser")
+  createdListings               listing[]                      @relation("listingCreatedByUser")
+  invitationsSent               invitation[]                   @relation("invitationInviter")
+  members                       member[]
+  sessions                      session[]
+  updatedListings               listing[]                      @relation("listingUpdatedByUser")
 
   @@map("user")
 }
@@ -105,17 +115,18 @@ model verification {
 }
 
 model organization {
-  id             String         @id @default(cuid())
-  name           String
-  slug           String         @unique
-  logo           String?
-  createdAt      DateTime       @default(now())
-  metadata       String?
-  activeSessions session[]      @relation("activeOrganizationSessions")
-  apiKeys        apikey[]       @relation("organizationApiKeys")
-  invitations    invitation[]
-  members        member[]
-  sellerAccount  sellerAccount?
+  id                            String                         @id @default(cuid())
+  name                          String
+  slug                          String                         @unique
+  logo                          String?
+  createdAt                     DateTime                       @default(now())
+  metadata                      String?
+  activeSessions                session[]                      @relation("activeOrganizationSessions")
+  apiKeys                       apikey[]                       @relation("organizationApiKeys")
+  invitations                   invitation[]
+  members                       member[]
+  openClawAuthorizationSessions openClawAuthorizationSession[] @relation("openClawAuthorizationSessionOrganization")
+  sellerAccount                 sellerAccount?
 
   @@map("organization")
 }
@@ -187,20 +198,49 @@ model apikey {
 }
 
 model sellerAccount {
-  id                         String       @id
-  organizationId             String       @unique @map("organization_id")
+  id                         String                  @id
+  organizationId             String                  @unique @map("organization_id")
   status                     String
   listingEligibilityStatus   SellerEligibilityStatus @map("listing_eligibility_status")
   listingEligibilitySource   SellerEligibilitySource? @map("listing_eligibility_source")
-  listingEligibilityNote     String?      @map("listing_eligibility_note")
-  defaultDisplayCurrencyCode String       @default("USD") @map("default_display_currency_code")
-  createdAt                  DateTime     @default(now()) @map("created_at")
-  updatedAt                  DateTime     @updatedAt @map("updated_at")
+  listingEligibilityNote     String?                 @map("listing_eligibility_note")
+  defaultDisplayCurrencyCode String                  @default("USD") @map("default_display_currency_code")
+  createdAt                  DateTime                @default(now()) @map("created_at")
+  updatedAt                  DateTime                @updatedAt @map("updated_at")
   auditEvents                auditEvent[]
   listings                   listing[]
-  organization               organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization               organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("seller_account")
+}
+
+model openClawAuthorizationSession {
+  id                   String                            @id
+  browserTokenHash     String                            @unique @map("browser_token_hash")
+  codeChallenge        String                            @map("code_challenge")
+  codeChallengeMethod  String                            @map("code_challenge_method")
+  status               OpenClawAuthorizationSessionStatus
+  organizationId       String?                           @map("organization_id")
+  authorizedByUserId   String?                           @map("authorized_by_user_id")
+  proposedWorkspaceName String?                        @map("proposed_workspace_name")
+  proposedWorkspaceSlug String?                        @map("proposed_workspace_slug")
+  failureCode          String?                           @map("failure_code")
+  failureMessage       String?                           @map("failure_message")
+  expiresAt            DateTime                          @map("expires_at")
+  authorizedAt         DateTime?                         @map("authorized_at")
+  rejectedAt           DateTime?                         @map("rejected_at")
+  cancelledAt          DateTime?                         @map("cancelled_at")
+  expiredAt            DateTime?                         @map("expired_at")
+  redeemedAt           DateTime?                         @map("redeemed_at")
+  createdAt            DateTime                          @default(now()) @map("created_at")
+  updatedAt            DateTime                          @updatedAt @map("updated_at")
+  authorizedByUser     user?                             @relation("openClawAuthorizationSessionAuthorizedByUser", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
+  organization         organization?                     @relation("openClawAuthorizationSessionOrganization", fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("openclaw_authorization_session")
 }
 
 model category {

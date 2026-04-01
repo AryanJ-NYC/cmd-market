@@ -1,11 +1,14 @@
 import { sellerBrowserRoutes, sellerFlowSteps } from "../../lib/discovery/content";
 
+const sellerWorkspaceRoute = findSellerBrowserRoute("/seller/workspace");
+const sellerSettingsRoute = findSellerBrowserRoute("/seller/settings");
+
 export const sellerEntryContent = {
   boundaryNote:
-    "Start here in the browser. Once your workspace is ready, you can add an API key so OpenClaw can help with drafts and publishing.",
+    "Start here in the browser. OpenClaw can now launch the preferred browser handoff flow, and seller settings remains the manual fallback if you ever need to mint a key directly.",
   eyebrow: "Seller Setup",
   intro:
-    "Create your seller workspace in the browser, then connect OpenClaw when you are ready to speed up the repetitive listing work.",
+    "Create your seller workspace in the browser, then connect OpenClaw through the browser handoff when you are ready to speed up the repetitive listing work.",
   links: [
     {
       description: "Sign in with X to begin your seller setup.",
@@ -14,12 +17,12 @@ export const sellerEntryContent = {
     },
     {
       description: "Create or choose the workspace that will own your CMD Market listings.",
-      href: sellerBrowserRoutes[0].href,
+      href: sellerWorkspaceRoute.href,
       title: "Seller workspace"
     },
     {
-      description: "Create your OpenClaw API key and review your seller status.",
-      href: sellerBrowserRoutes[1].href,
+      description: "Review seller status and manually create an OpenClaw API key if you need the fallback path.",
+      href: sellerSettingsRoute.href,
       title: "Seller settings"
     }
   ],
@@ -30,3 +33,13 @@ export const sellerEntryContent = {
   steps: sellerFlowSteps,
   title: "Start selling on CMD Market"
 } as const;
+
+function findSellerBrowserRoute(href: string) {
+  const route = sellerBrowserRoutes.find((item) => item.href === href);
+
+  if (!route) {
+    throw new Error(`Missing seller browser route: ${href}`);
+  }
+
+  return route;
+}

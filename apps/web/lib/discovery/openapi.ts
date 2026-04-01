@@ -21,6 +21,11 @@ import {
   uploadSessionsResponseSchema
 } from "../listing/http";
 import {
+  openClawAuthorizationSessionCreateRequestSchema,
+  openClawAuthorizationSessionCreateResponseSchema,
+  openClawAuthorizationSessionRedeemResponseSchema,
+  openClawAuthorizationSessionStatusResponseSchema,
+  openClawAuthorizationSessionVerifierRequestSchema,
   sellerApiErrorBodySchema,
   sellerContextResponseSchema,
   sellerPublishabilityResponseSchema
@@ -49,6 +54,21 @@ const listingIdPathParamsSchema = z.object({
 });
 
 export function buildOpenApiDocument() {
+  const createOpenClawAuthorizationSessionRoute = findSellerApiRoute("/api/openclaw/authorization-sessions");
+  const openClawAuthorizationSessionStatusRoute = findSellerApiRoute(
+    "/api/openclaw/authorization-sessions/{sessionId}/status"
+  );
+  const openClawAuthorizationSessionRedeemRoute = findSellerApiRoute(
+    "/api/openclaw/authorization-sessions/{sessionId}/redeem"
+  );
+  const sellerContextRoute = findSellerApiRoute("/api/seller/context");
+  const sellerPublishabilityRoute = findSellerApiRoute("/api/seller/publishability");
+  const sellerListingsRoute = findSellerApiRoute("/api/seller/listings");
+  const sellerListingRoute = findSellerApiRoute("/api/seller/listings/{listingId}");
+  const sellerUploadSessionsRoute = findSellerApiRoute("/api/seller/upload-sessions");
+  const sellerListingMediaRoute = findSellerApiRoute("/api/seller/listings/{listingId}/media");
+  const sellerListingPublishRoute = findSellerApiRoute("/api/seller/listings/{listingId}/publish");
+
   return createDocument({
     components: {
       securitySchemes: {
@@ -70,7 +90,7 @@ export function buildOpenApiDocument() {
     },
     info: {
       description:
-        "Current OpenAPI description for the implemented CMD Market public and seller API routes. This document is intentionally narrow and does not describe planned marketplace routes that are not live yet.",
+        "Current OpenAPI description for the implemented CMD Market public and seller API routes. CMD Market is built to support many agent clients over time; OpenClaw is the first implemented browser handoff integration described here. This document is intentionally narrow and does not describe planned marketplace routes that are not live yet.",
       title: "CMD Market API",
       version: openApiVersion
     },
@@ -127,13 +147,83 @@ export function buildOpenApiDocument() {
           summary: "Read a public listing"
         }
       },
+      "/api/openclaw/authorization-sessions": {
+        post: {
+          description:
+            "Starts a short-lived OpenClaw browser handoff authorization session for a public client instance and returns the browser URL. The request includes a PKCE code challenge and optional proposed first-workspace details.",
+          requestBody: jsonRequestBody(
+            openClawAuthorizationSessionCreateRequestSchema,
+            "PKCE code challenge for the initiating OpenClaw client instance, plus optional proposed first-workspace details to prefill during the browser handoff.",
+            true
+          ),
+          responses: sellerResponses({
+            success: {
+              description: createOpenClawAuthorizationSessionRoute.description,
+              schema: openClawAuthorizationSessionCreateResponseSchema
+            }
+          }),
+          summary: "Create an OpenClaw authorization session"
+        }
+      },
+      "/api/openclaw/authorization-sessions/{sessionId}/status": {
+        post: {
+          description:
+            "Polls the current state of an OpenClaw browser handoff authorization session using the PKCE code verifier from the same client instance that started it.",
+          requestBody: jsonRequestBody(
+            openClawAuthorizationSessionVerifierRequestSchema,
+            "PKCE code verifier for the OpenClaw authorization session.",
+            true
+          ),
+          requestParams: {
+            path: z.object({
+              sessionId: z.string().meta({
+                description: "OpenClaw authorization session identifier.",
+                example: "auth_123"
+              })
+            })
+          },
+          responses: sellerResponses({
+            success: {
+              description: openClawAuthorizationSessionStatusRoute.description,
+              schema: openClawAuthorizationSessionStatusResponseSchema
+            }
+          }),
+          summary: "Poll an OpenClaw authorization session"
+        }
+      },
+      "/api/openclaw/authorization-sessions/{sessionId}/redeem": {
+        post: {
+          description:
+            "Redeems an authorized OpenClaw browser handoff authorization session into a seller-scoped API key using the PKCE code verifier from the same client instance that started it.",
+          requestBody: jsonRequestBody(
+            openClawAuthorizationSessionVerifierRequestSchema,
+            "PKCE code verifier for the OpenClaw authorization session.",
+            true
+          ),
+          requestParams: {
+            path: z.object({
+              sessionId: z.string().meta({
+                description: "OpenClaw authorization session identifier.",
+                example: "auth_123"
+              })
+            })
+          },
+          responses: sellerResponses({
+            success: {
+              description: openClawAuthorizationSessionRedeemRoute.description,
+              schema: openClawAuthorizationSessionRedeemResponseSchema
+            }
+          }),
+          summary: "Redeem an OpenClaw authorization session"
+        }
+      },
       "/api/seller/context": {
         get: {
           description:
             "Returns the resolved seller workspace and actor metadata for the current browser session or seller API key. API keys do not authenticate browser `/seller/*` routes.",
           responses: sellerResponses({
             success: {
-              description: sellerApiRoutes[0].description,
+              description: sellerContextRoute.description,
               schema: sellerContextResponseSchema
             }
           }),
@@ -151,7 +241,7 @@ export function buildOpenApiDocument() {
           ),
           responses: sellerResponses({
             success: {
-              description: sellerApiRoutes[2].description,
+              description: sellerListingsRoute.description,
               schema: sellerListingResponseSchema
             }
           }),
@@ -171,7 +261,7 @@ export function buildOpenApiDocument() {
               "404": errorResponse("Draft listing could not be found.")
             },
             success: {
-              description: sellerApiRoutes[3].description,
+              description: sellerListingRoute.description,
               schema: sellerListingResponseSchema
             }
           }),
@@ -193,7 +283,7 @@ export function buildOpenApiDocument() {
               "404": errorResponse("Draft listing could not be found.")
             },
             success: {
-              description: sellerApiRoutes[4].description,
+              description: sellerListingRoute.description,
               schema: sellerListingResponseSchema
             }
           }),
@@ -218,7 +308,7 @@ export function buildOpenApiDocument() {
               "404": errorResponse("Draft listing could not be found.")
             },
             success: {
-              description: sellerApiRoutes[6].description,
+              description: sellerListingMediaRoute.description,
               schema: sellerListingResponseSchema
             }
           }),
@@ -247,7 +337,7 @@ export function buildOpenApiDocument() {
                 }
               },
               success: {
-                description: sellerApiRoutes[7].description,
+                description: sellerListingPublishRoute.description,
                 schema: sellerListingResponseSchema
               }
             })
@@ -273,7 +363,7 @@ export function buildOpenApiDocument() {
               }
             },
             success: {
-              description: sellerApiRoutes[1].description,
+              description: sellerPublishabilityRoute.description,
               schema: sellerPublishabilityResponseSchema
             }
           }),
@@ -295,7 +385,7 @@ export function buildOpenApiDocument() {
               "404": errorResponse("Draft listing could not be found.")
             },
             success: {
-              description: sellerApiRoutes[5].description,
+              description: sellerUploadSessionsRoute.description,
               schema: uploadSessionsResponseSchema
             }
           }),
@@ -373,4 +463,14 @@ function errorResponse(description: string) {
     },
     description
   };
+}
+
+function findSellerApiRoute(href: string) {
+  const route = sellerApiRoutes.find((item) => item.href === href);
+
+  if (!route) {
+    throw new Error(`Missing seller API route: ${href}`);
+  }
+
+  return route;
 }

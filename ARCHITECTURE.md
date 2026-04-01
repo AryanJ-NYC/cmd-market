@@ -4,6 +4,8 @@
 
 CMD Market is a Turborepo with one Next.js app that now carries the first marketplace backend slices inside the web runtime. The repo is still intentionally small, but it now includes seller workspace auth, local PostgreSQL, Prisma-managed persistence, draft listing authoring, direct-upload media flow, publish validation, and the first public listing read surface alongside the frontend.
 
+CMD Market is meant to support many agent clients over time. OpenClaw is the first implemented integration in this repo, not the full product identity.
+
 ## Repo Shape
 
 - `apps/web`: the Next.js App Router application for the CMD Market web experience
@@ -25,9 +27,10 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 - BetterAuth is mounted at `apps/web/app/api/auth/[...all]/route.ts` and uses:
   - Twitter/X sign-in
   - organization workspaces
-  - organization-owned API keys for OpenClaw
-- Seller-specific data currently lives in eight custom marketplace tables:
+  - organization-owned API keys for seller-agent integrations such as OpenClaw
+- Seller-specific data currently lives in nine custom marketplace tables:
   - `seller_account`
+  - `openclaw_authorization_session`
   - `audit_event`
   - `listing`
   - `listing_media`
@@ -43,10 +46,16 @@ CMD Market is a Turborepo with one Next.js app that now carries the first market
 
 - Browser sellers sign in at `/sign-in`.
 - Seller workspace creation and selection live under `/seller/workspace`, with workspace activation handled through a server action instead of a mutating `GET` route.
-- Seller settings and OpenClaw authorization live under `/seller/settings`.
+- OpenClaw can start a short-lived browser handoff session that lands on `/seller/authorize/openclaw/:browserToken`, and that handoff can create the first seller workspace inline before authorization is approved.
+- Seller settings at `/seller/settings` still supports manual OpenClaw API key creation as a fallback path.
 - Seller request resolution is shared between browser sessions and `x-api-key` requests.
 - Development eligibility override is only available outside production, even when `DEV_SELLER_OVERRIDE_EMAILS` is set.
+- OpenClaw authorization sessions are persisted in Prisma with hashed browser tokens, PKCE code challenges for public-client verification, optional proposed first-workspace fields, terminal statuses, and a 15-minute TTL.
+- The current OpenClaw integration still keeps one organization-owned OpenClaw key per seller workspace.
 - The first seller APIs are:
+  - `POST /api/openclaw/authorization-sessions`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/status`
+  - `POST /api/openclaw/authorization-sessions/:sessionId/redeem`
   - `GET /api/seller/context`
   - `GET /api/seller/publishability`
   - `POST /api/seller/listings`

@@ -40,6 +40,10 @@ export default async function SellerSettingsPage() {
             <p className="text-sm leading-6 text-stone-400">
               Active workspace `{workspaceData.activeOrganization.slug}` for {workspaceData.session.email}.
             </p>
+            <p className="text-sm leading-6 text-stone-500">
+              OpenClaw should usually start authorization through the browser handoff flow. Manual key creation here
+              remains available as a fallback.
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link

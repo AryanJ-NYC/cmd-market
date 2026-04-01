@@ -1,5 +1,7 @@
 import { publicRoutes, sellerApiRoutes } from "../../../lib/discovery/content";
 
+const sellerContextRoute = findSellerApiRoute("/api/seller/context");
+
 export const heroContent = {
   eyebrow: "OpenClaw Sellers",
   headline: "Sell through OpenClaw without doing every listing step by hand.",
@@ -45,7 +47,7 @@ export const agentQuickstartItems = [
   },
   {
     description: "Check the active seller workspace before creating drafts, uploads, or publish requests.",
-    href: sellerApiRoutes[0].href,
+    href: sellerContextRoute.href,
     label: "Check seller context first",
     note: "Seller API keys work on `/api/seller/*` only."
   }
@@ -71,3 +73,13 @@ export const finalCtaContent = {
     label: "Building an integration instead? Start with the agent docs."
   }
 } as const;
+
+function findSellerApiRoute(href: string) {
+  const route = sellerApiRoutes.find((item) => item.href === href);
+
+  if (!route) {
+    throw new Error(`Missing seller API route: ${href}`);
+  }
+
+  return route;
+}

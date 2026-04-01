@@ -9,6 +9,7 @@ import {
   assertWorkspaceCreationAllowed,
   shouldAutoSubmitWorkspaceActivation
 } from "./workspace";
+import * as sellerWorkspace from "./workspace";
 
 describe("seller workspace", () => {
   it("routes sellers with no workspaces to creation", () => {
@@ -111,5 +112,36 @@ describe("seller workspace", () => {
   it("disables auto-submit when a workspace activation error is already present", () => {
     expect(shouldAutoSubmitWorkspaceActivation(null)).toBe(true);
     expect(shouldAutoSubmitWorkspaceActivation("Activation failed.")).toBe(false);
+  });
+
+  it("keeps a safe in-app return path for the seller browser handoff flow", () => {
+    if (typeof sellerWorkspace.buildSellerReturnPath !== "function") {
+      expect(typeof sellerWorkspace.buildSellerReturnPath).toBe("function");
+      return;
+    }
+
+    expect(
+      sellerWorkspace.buildSellerReturnPath("/seller/authorize/openclaw/browser_token", "/seller/workspace")
+    ).toBe("/seller/authorize/openclaw/browser_token");
+  });
+
+  it("falls back when the requested seller return path is unsafe", () => {
+    if (typeof sellerWorkspace.buildSellerReturnPath !== "function") {
+      expect(typeof sellerWorkspace.buildSellerReturnPath).toBe("function");
+      return;
+    }
+
+    expect(sellerWorkspace.buildSellerReturnPath("https://evil.example.com", "/seller/workspace")).toBe(
+      "/seller/workspace"
+    );
+    expect(sellerWorkspace.buildSellerReturnPath("//evil.example.com", "/seller/workspace")).toBe(
+      "/seller/workspace"
+    );
+    expect(sellerWorkspace.buildSellerReturnPath("/\\evil.example.com", "/seller/workspace")).toBe(
+      "/seller/workspace"
+    );
+    expect(sellerWorkspace.buildSellerReturnPath("seller/workspace", "/seller/workspace")).toBe(
+      "/seller/workspace"
+    );
   });
 });

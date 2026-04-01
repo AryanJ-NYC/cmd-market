@@ -79,6 +79,84 @@ export const sellerApiErrorBodySchema = z
     id: "SellerApiErrorResponse"
   });
 
+export const openClawAuthorizationSessionStatusSchema = z
+  .enum(["authorized", "cancelled", "expired", "pending", "redeemed", "rejected"])
+  .meta({
+    description: "Current state of an OpenClaw browser handoff authorization session.",
+    example: "pending",
+    id: "OpenClawAuthorizationSessionStatus"
+  });
+
+export const openClawAuthorizationSessionVerifierRequestSchema = z
+  .object({
+    code_verifier: createPkceCodeVerifierSchema()
+  })
+  .meta({
+    description: "PKCE code verifier proving control of the OpenClaw client instance that started the session.",
+    id: "OpenClawAuthorizationSessionVerifierRequest"
+  });
+
+export const openClawAuthorizationSessionCreateRequestSchema = z
+  .object({
+    code_challenge: createPkceS256CodeChallengeSchema(),
+    code_challenge_method: z.literal("S256"),
+    proposed_workspace: z
+      .object({
+        name: z.string().trim().min(1).optional(),
+        slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional()
+      })
+      .optional()
+  })
+  .meta({
+    description:
+      "PKCE proof for the OpenClaw public-client handoff, plus optional first-workspace details that CMD Market can prefill during onboarding.",
+    id: "OpenClawAuthorizationSessionCreateRequest"
+  });
+
+export const openClawAuthorizationSessionCreateResponseSchema = z
+  .object({
+    data: z.object({
+      browser_url: z.string().url(),
+      expires_at: z.iso.datetime(),
+      session_id: z.string()
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session creation response.",
+    id: "OpenClawAuthorizationSessionCreateResponse"
+  });
+
+export const openClawAuthorizationSessionStatusResponseSchema = z
+  .object({
+    data: z.object({
+      expires_at: z.iso.datetime(),
+      session_id: z.string(),
+      status: openClawAuthorizationSessionStatusSchema
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session polling response.",
+    id: "OpenClawAuthorizationSessionStatusResponse"
+  });
+
+export const openClawAuthorizationSessionRedeemResponseSchema = z
+  .object({
+    data: z.object({
+      api_key: z.string(),
+      seller_context: z.object({
+        eligibility_source: sellerEligibilitySourceSchema,
+        eligibility_status: sellerEligibilityStatusSchema,
+        organization_id: z.string(),
+        seller_account_id: z.string()
+      }),
+      session_id: z.string()
+    })
+  })
+  .meta({
+    description: "OpenClaw authorization-session redeem response.",
+    id: "OpenClawAuthorizationSessionRedeemResponse"
+  });
+
 export function serializeSellerApiErrorBody(result: {
   code: string;
   message: string;
@@ -111,4 +189,21 @@ export function serializeSellerPublishabilityResponse(input: {
       sellerContext: input.sellerContext
     }
   });
+}
+
+function createPkceCodeVerifierSchema() {
+  return z
+    .string()
+    .trim()
+    .min(43)
+    .max(128)
+    .regex(/^[A-Za-z0-9\-._~]+$/);
+}
+
+function createPkceS256CodeChallengeSchema() {
+  return z
+    .string()
+    .trim()
+    .length(43)
+    .regex(/^[A-Za-z0-9_-]+$/);
 }
