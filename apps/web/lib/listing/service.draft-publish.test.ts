@@ -43,6 +43,7 @@ import {
   createDraftListingSchema,
   getCategory,
   getPublicListing,
+  getPublishedListingMedia,
   publishListing,
   updateDraftListingSchema,
   updateDraftListing
@@ -781,6 +782,86 @@ describe("listing service issue #3", () => {
           url: "https://cmd.market/listings/lst_123/media/med_123",
         },
       ],
+    });
+  });
+
+  it("returns the current backing asset url for published listing media", async () => {
+    storage.getPublicAssetUrl.mockReturnValue(
+      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+    );
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg",
+          }),
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+      }),
+    );
+
+    await expect(getPublishedListingMedia("lst_123", "med_123")).resolves.toEqual({
+      data: {
+        altText: "Front photo",
+        assetUrl:
+          "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+        id: "med_123",
+        listingId: "lst_123",
+        sortOrder: 0,
+      },
+      ok: true,
+    });
+  });
+
+  it("returns not found when published listing media is requested for a missing or draft listing", async () => {
+    listingRepository.findListingById
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(
+        createListingRecord({
+          media: [
+            createListingMediaRecord({
+              assetKey: "listings/drafts/lst_123/front.jpg",
+            }),
+          ],
+          status: "draft",
+        }),
+      );
+
+    await expect(getPublishedListingMedia("lst_missing", "med_123")).resolves.toEqual({
+      code: "listing_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    });
+
+    await expect(getPublishedListingMedia("lst_123", "med_123")).resolves.toEqual({
+      code: "listing_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    });
+  });
+
+  it("returns not found when the media item does not belong to the published listing", async () => {
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg",
+            id: "med_123",
+          }),
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+      }),
+    );
+
+    await expect(getPublishedListingMedia("lst_123", "med_404")).resolves.toEqual({
+      code: "listing_media_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
     });
   });
 });

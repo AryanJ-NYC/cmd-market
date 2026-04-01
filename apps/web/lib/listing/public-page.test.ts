@@ -8,13 +8,13 @@ describe("listing/public-page", () => {
 
     expect(model).toMatchObject({
       categoryName: "Trading Cards",
-      condition: "used good",
+      condition: "Used Good",
       description: "Clean slab, no cracks, centered well.",
       price: "$1,250.00",
       quantityAvailable: 1,
       sellerName: "Scarce City",
       shareUrl: "https://cmd.market/listings/lst_123",
-      status: "published",
+      status: "Published",
       title: "1999 Charizard Holo PSA 8",
     });
     expect(model.images).toEqual([

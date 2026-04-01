@@ -68,18 +68,22 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function formatToken(value: string) {
-  return value.replace(/_/g, " ");
-}
-
 function formatAttributeValue(value: boolean | number | string | Record<string, unknown> | unknown[]) {
   if (typeof value === "string" || typeof value === "number") {
     return String(value);
   }
 
   if (typeof value === "boolean") {
-    return value ? "true" : "false";
+    return value ? "Yes" : "No";
   }
 
   return JSON.stringify(value);
+}
+
+function formatToken(value: string) {
+  return value
+    .split("_")
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
 }

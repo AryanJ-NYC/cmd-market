@@ -10,6 +10,19 @@ describe("createPublicUrlBuilder", () => {
     expect(buildPublicUrl("/listings/lst_123")).toBe("https://cmd.market/listings/lst_123");
   });
 
+  test("prefers forwarded headers over the raw request origin", () => {
+    const buildPublicUrl = createPublicUrlBuilder(
+      new Request("http://internal-host:3000/api/listings/lst_123", {
+        headers: {
+          "x-forwarded-host": "cmd.market",
+          "x-forwarded-proto": "https",
+        },
+      }),
+    );
+
+    expect(buildPublicUrl("/listings/lst_123")).toBe("https://cmd.market/listings/lst_123");
+  });
+
   test("builds absolute urls from forwarded headers", () => {
     const buildPublicUrl = createPublicUrlBuilder(
       new Headers({

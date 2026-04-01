@@ -7,18 +7,29 @@ export function createPublicUrlBuilder(input: Headers | Request) {
 }
 
 function resolvePublicOrigin(input: Headers | Request) {
+  const headers = input instanceof Request ? input.headers : input;
+  const forwardedOrigin = resolveForwardedOrigin(headers);
+
+  if (forwardedOrigin) {
+    return forwardedOrigin;
+  }
+
   if (input instanceof Request) {
     return new URL(input.url).origin;
   }
 
-  const host = readForwardedHeader(input, "x-forwarded-host") ?? input.get("host");
+  throw new Error("Cannot resolve public origin without a host header.");
+}
+
+function resolveForwardedOrigin(headers: Headers) {
+  const host = readForwardedHeader(headers, "x-forwarded-host") ?? headers.get("host");
 
   if (!host) {
-    throw new Error("Cannot resolve public origin without a host header.");
+    return null;
   }
 
   const protocol =
-    readForwardedHeader(input, "x-forwarded-proto") ??
+    readForwardedHeader(headers, "x-forwarded-proto") ??
     (env.nodeEnv === "development" ? "http" : "https");
 
   return `${protocol}://${host}`;
