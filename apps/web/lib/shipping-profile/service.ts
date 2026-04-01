@@ -9,6 +9,7 @@ import {
 } from "./repository";
 
 const DOMESTIC_CURRENCY_CODE = "USD";
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
 const SHIPPING_SCOPE = "us_50_states";
 
 export async function createShippingProfile(
@@ -144,10 +145,15 @@ export async function updateShippingProfile(
 
 export const createShippingProfileSchema = z
   .object({
-    domestic_rate_minor: z.number().int().nonnegative().meta({
-      description: "Flat domestic shipping rate in USD minor units.",
-      example: 499,
-    }),
+    domestic_rate_minor: z
+      .number()
+      .int()
+      .nonnegative()
+      .lte(POSTGRES_INTEGER_MAX)
+      .meta({
+        description: "Flat domestic shipping rate in USD minor units.",
+        example: 499,
+      }),
     handling_time_days: z.union([z.literal(1), z.literal(2), z.literal(3)]).meta({
       description: "Estimated seller handling time in business days.",
       example: 2,
@@ -165,10 +171,16 @@ export const createShippingProfileSchema = z
 
 export const updateShippingProfileSchema = z
   .object({
-    domestic_rate_minor: z.number().int().nonnegative().optional().meta({
-      description: "Flat domestic shipping rate in USD minor units.",
-      example: 0,
-    }),
+    domestic_rate_minor: z
+      .number()
+      .int()
+      .nonnegative()
+      .lte(POSTGRES_INTEGER_MAX)
+      .optional()
+      .meta({
+        description: "Flat domestic shipping rate in USD minor units.",
+        example: 0,
+      }),
     handling_time_days: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional().meta({
       description: "Estimated seller handling time in business days.",
       example: 1,

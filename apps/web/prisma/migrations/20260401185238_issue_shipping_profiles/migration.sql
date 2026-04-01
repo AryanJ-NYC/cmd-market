@@ -33,4 +33,4 @@ ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_domestic_rate_mi
 ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_handling_time_days_valid" CHECK ("handling_time_days" IN (1, 2, 3));
 
 -- AddConstraint
-ALTER TABLE "listing" ADD CONSTRAINT "listing_non_draft_requires_shipping_profile" CHECK ("status" = 'draft' OR "shipping_profile_id" IS NOT NULL);
+ALTER TABLE "listing" ADD CONSTRAINT "listing_non_draft_requires_shipping_profile" CHECK ("status" = 'draft' OR "shipping_profile_id" IS NOT NULL) NOT VALID;

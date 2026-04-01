@@ -185,6 +185,20 @@ describe("shipping profile service", () => {
         handling_time_days: 4,
       }).success,
     ).toBe(false);
+
+    expect(
+      createShippingProfileSchema.safeParse({
+        domestic_rate_minor: 2_147_483_648,
+        handling_time_days: 2,
+        name: "Too big",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      updateShippingProfileSchema.safeParse({
+        domestic_rate_minor: 2_147_483_648,
+      }).success,
+    ).toBe(false);
   });
 
   it("parses shipping profile inputs into runtime shape", () => {
