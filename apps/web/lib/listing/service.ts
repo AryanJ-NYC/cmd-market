@@ -34,6 +34,7 @@ const IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
+const identityPublicUrl: PublicUrlBuilder = (pathname) => pathname;
 
 export async function createDraftListing(
   request: Request,
@@ -305,6 +306,7 @@ export async function getCategory(categorySlug: string): Promise<PublicResult<Ca
 
 export async function getPublicListing(
   listingId: string,
+  buildPublicUrl: PublicUrlBuilder = identityPublicUrl,
 ): Promise<PublicResult<PublicListingResource>> {
   const listing = await listingRepository.findListingById(listingId);
 
@@ -318,7 +320,45 @@ export async function getPublicListing(
   }
 
   return {
-    data: serializePublicListing(listing),
+    data: serializePublicListing(listing, buildPublicUrl),
+    ok: true,
+  };
+}
+
+export async function getPublishedListingMedia(
+  listingId: string,
+  mediaId: string,
+): Promise<PublicResult<PublishedListingMediaResource>> {
+  const listing = await listingRepository.findListingById(listingId);
+
+  if (!listing || listing.status !== "published") {
+    return {
+      code: "listing_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    };
+  }
+
+  const media = listing.media.find((item) => item.id === mediaId);
+
+  if (!media) {
+    return {
+      code: "listing_media_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    };
+  }
+
+  return {
+    data: {
+      altText: media.altText,
+      assetUrl: getPublicAssetUrl(media.assetKey),
+      id: media.id,
+      listingId,
+      sortOrder: media.sortOrder,
+    },
     ok: true,
   };
 }
@@ -705,7 +745,10 @@ function serializeSellerListing(
   };
 }
 
-function serializePublicListing(listing: ListingRecord): PublicListingResource {
+function serializePublicListing(
+  listing: ListingRecord,
+  buildPublicUrl: PublicUrlBuilder,
+): PublicListingResource {
   return {
     attributes: listing.attributes.map(serializeListingAttribute),
     category: listing.category
@@ -718,11 +761,12 @@ function serializePublicListing(listing: ListingRecord): PublicListingResource {
     conditionCode: listing.conditionCode,
     description: listing.description,
     id: listing.id,
+    listingUrl: buildPublicUrl(getPublicListingPath(listing.id)),
     media: listing.media.map((item) => ({
       altText: item.altText,
       id: item.id,
       sortOrder: item.sortOrder,
-      url: getPublicAssetUrl(item.assetKey),
+      url: buildPublicUrl(getPublicListingMediaPath(listing.id, item.id)),
     })),
     object: "listing",
     price:
@@ -1034,6 +1078,14 @@ function dedupeStrings(values: string[]) {
   return [...new Set(values)];
 }
 
+function getPublicListingPath(listingId: string) {
+  return `/listings/${listingId}`;
+}
+
+function getPublicListingMediaPath(listingId: string, mediaId: string) {
+  return `${getPublicListingPath(listingId)}/media/${mediaId}`;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1143,6 +1195,8 @@ type ListingAttributeResource = {
   valueType: "boolean" | "enum" | "json" | "number" | "text";
 };
 
+export type PublicUrlBuilder = (pathname: string) => string;
+
 type BaseListingResource = {
   attributes: ListingAttributeResource[];
   category: {
@@ -1188,12 +1242,21 @@ export type SellerListingResource = BaseListingResource & {
 };
 
 export type PublicListingResource = BaseListingResource & {
+  listingUrl: string;
   media: Array<{
     altText: string | null;
     id: string;
     sortOrder: number;
     url: string;
   }>;
+};
+
+export type PublishedListingMediaResource = {
+  altText: string | null;
+  assetUrl: string;
+  id: string;
+  listingId: string;
+  sortOrder: number;
 };
 
 export type UploadSessionResource = {

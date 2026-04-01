@@ -78,12 +78,13 @@ describe("listing/http", () => {
       conditionCode: "used_good",
       description: "Clean slab, no cracks, centered well.",
       id: "lst_123",
+      listingUrl: "https://cmd.market/listings/lst_123",
       media: [
         {
           altText: "Front of the card",
           id: "med_123",
           sortOrder: 0,
-          url: "https://assets.cmd.market/listings/drafts/lst_123/asset_123-front.jpg"
+          url: "https://cmd.market/listings/lst_123/media/med_123"
         }
       ],
       object: "listing",
@@ -103,7 +104,43 @@ describe("listing/http", () => {
       updatedAt: "2026-03-30T20:00:00.000Z"
     });
 
-    expect(publicListingResponseSchema.parse(response)).toEqual(response);
+    expect(publicListingResponseSchema.parse(response)).toEqual({
+      data: {
+        attributes: [],
+        category: {
+          id: "cat_cards",
+          name: "Trading Cards",
+          slug: "trading-cards",
+        },
+        condition_code: "used_good",
+        description: "Clean slab, no cracks, centered well.",
+        id: "lst_123",
+        listing_url: "https://cmd.market/listings/lst_123",
+        media: [
+          {
+            alt_text: "Front of the card",
+            id: "med_123",
+            sort_order: 0,
+            url: "https://cmd.market/listings/lst_123/media/med_123",
+          },
+        ],
+        object: "listing",
+        price: {
+          amount_minor: 125000,
+          currency_code: "USD",
+        },
+        published_at: "2026-03-30T20:00:00.000Z",
+        quantity_available: 1,
+        seller: {
+          display_name: "Scarce City",
+          id: "sel_123",
+          slug: "scarce-city",
+        },
+        status: "published",
+        title: "1999 Charizard Holo PSA 8",
+        updated_at: "2026-03-30T20:00:00.000Z",
+      },
+    });
   });
 
   test("serializes category responses with the shared schemas", () => {

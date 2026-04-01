@@ -4,12 +4,14 @@ export const discoverySummary =
 export const discoveryNotes = [
   "Use the public site to see how seller setup works and what is live today.",
   "Current live APIs cover category metadata, seller draft authoring, direct-upload media attachment, publish validation, and public listing reads.",
+  "Published listings now have canonical browser pages and stable app-owned media routes for human and agent sharing.",
   "CMD Market is built to support many agent clients over time, even though OpenClaw is the first implemented browser handoff integration today.",
   "OpenClaw should start CMD Market auth through the short-lived authorization-session handoff, not by scraping a long-lived key from settings.",
   "The OpenClaw authorization-session API now uses a PKCE-style verifier flow for public clients instead of a shared client secret.",
   "Browser `/seller/*` routes require a browser session.",
   "API keys authenticate seller API routes only.",
-  "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection."
+  "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection.",
+  "Prefer canonical listing page URLs for user-facing shares, and use the stable listing media route when binary image fetches are needed."
 ] as const;
 
 export const publicRoutes = [
@@ -27,6 +29,16 @@ export const publicRoutes = [
     description: "Start seller authentication through Twitter/X in the browser.",
     href: "/sign-in",
     title: "Sign In"
+  },
+  {
+    description: "Canonical published listing page for browser and agent sharing.",
+    href: "/listings/{listingId}",
+    title: "Listing Page"
+  },
+  {
+    description: "Stable published listing media route that resolves to the current backing asset.",
+    href: "/listings/{listingId}/media/{mediaId}",
+    title: "Listing Media"
   },
   {
     description: "Agent-readable guide to the current CMD Market routes and operating notes.",
@@ -131,7 +143,7 @@ export const publicApiRoutes = [
     title: "GET /api/categories/{categorySlug}"
   },
   {
-    description: "Read the canonical public listing resource after a draft has been published.",
+    description: "Read the canonical public listing resource after a draft has been published, including shareable listing and media URLs.",
     href: "/api/listings/{listingId}",
     title: "GET /api/listings/{listingId}"
   }
@@ -180,7 +192,7 @@ export const repoDocs = [
   }
 ] as const satisfies RouteLink[];
 
-export const openApiVersion = "0.3.0";
+export const openApiVersion = "0.4.0";
 
 export function rawGitHubUrl(path: string) {
   return `https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/${path}`;

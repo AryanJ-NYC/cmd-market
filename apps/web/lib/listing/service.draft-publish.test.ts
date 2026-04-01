@@ -707,7 +707,13 @@ describe("listing service issue #3", () => {
       status: 404,
     });
 
-    const publishedResult = await getPublicListing("lst_123");
+    const publishedResult = await (getPublicListing as unknown as (
+      listingId: string,
+      buildPublicUrl: (pathname: string) => string,
+    ) => ReturnType<typeof getPublicListing>)(
+      "lst_123",
+      (pathname) => new URL(pathname, "https://cmd.market").toString(),
+    );
 
     expect(publishedResult.ok).toBe(true);
 
@@ -716,12 +722,16 @@ describe("listing service issue #3", () => {
     }
 
     expect(publishedResult.data.category?.slug).toBe("trading-cards");
+    expect(publishedResult.data).toMatchObject({
+      id: "lst_123",
+      listingUrl: "https://cmd.market/listings/lst_123",
+    });
     expect(publishedResult.data.media).toEqual([
       {
         altText: "Front photo",
         id: "med_123",
         sortOrder: 0,
-        url: "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+        url: "https://cmd.market/listings/lst_123/media/med_123",
       },
     ]);
     expect(publishedResult.data.price).toEqual({
@@ -730,6 +740,48 @@ describe("listing service issue #3", () => {
     });
     expect(publishedResult.data.status).toBe("published");
     expect(publishedResult.data.title).toBe("1999 Charizard Holo PSA 8");
+  });
+
+  it("returns stable public listing and media urls for published listings", async () => {
+    storage.getPublicAssetUrl.mockReturnValue("https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg");
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        category: createCategoryRecord(),
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg"
+          })
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+        title: "1999 Charizard Holo PSA 8"
+      })
+    );
+
+    const publishedResult = await (getPublicListing as unknown as (
+      listingId: string,
+      buildPublicUrl: (pathname: string) => string,
+    ) => ReturnType<typeof getPublicListing>)(
+      "lst_123",
+      (pathname) => new URL(pathname, "https://cmd.market").toString(),
+    );
+
+    expect(publishedResult.ok).toBe(true);
+
+    if (!publishedResult.ok) {
+      return;
+    }
+
+    expect(publishedResult.data).toMatchObject({
+      id: "lst_123",
+      listingUrl: "https://cmd.market/listings/lst_123",
+      media: [
+        {
+          id: "med_123",
+          url: "https://cmd.market/listings/lst_123/media/med_123",
+        },
+      ],
+    });
   });
 });
 

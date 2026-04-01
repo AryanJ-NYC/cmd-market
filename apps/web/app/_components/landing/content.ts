@@ -1,5 +1,7 @@
 import { publicRoutes, sellerApiRoutes } from "../../../lib/discovery/content";
 
+const llmsRoute = findPublicRoute("/llms.txt");
+const openApiRoute = findPublicRoute("/openapi.json");
 const sellerContextRoute = findSellerApiRoute("/api/seller/context");
 
 export const heroContent = {
@@ -35,13 +37,13 @@ export const heroContent = {
 export const agentQuickstartItems = [
   {
     description: "See what is public, what needs sign-in, and which routes are live right now.",
-    href: publicRoutes[3].href,
+    href: llmsRoute.href,
     label: "Read the docs",
     note: "The fastest starting point for a new integration."
   },
   {
     description: "Use the current API contract for seller setup, drafts, media, and publish flows.",
-    href: publicRoutes[4].href,
+    href: openApiRoute.href,
     label: "Use the API spec",
     note: "Live routes only."
   },
@@ -73,6 +75,16 @@ export const finalCtaContent = {
     label: "Building an integration instead? Start with the agent docs."
   }
 } as const;
+
+function findPublicRoute(href: string) {
+  const route = publicRoutes.find((item) => item.href === href);
+
+  if (!route) {
+    throw new Error(`Missing public route: ${href}`);
+  }
+
+  return route;
+}
 
 function findSellerApiRoute(href: string) {
   const route = sellerApiRoutes.find((item) => item.href === href);
