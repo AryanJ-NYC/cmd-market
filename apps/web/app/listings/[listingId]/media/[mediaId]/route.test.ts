@@ -17,7 +17,8 @@ describe("GET /listings/[listingId]/media/[mediaId]", () => {
     getPublishedListingMedia.mockResolvedValue({
       data: {
         altText: "Front photo",
-        assetUrl: "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+        assetUrl:
+          "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg?X-Amz-Signature=test",
         id: "med_123",
         listingId: "lst_123",
         sortOrder: 0,
@@ -36,7 +37,7 @@ describe("GET /listings/[listingId]/media/[mediaId]", () => {
     expect(getPublishedListingMedia).toHaveBeenCalledWith("lst_123", "med_123");
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg?X-Amz-Signature=test",
     );
   });
 

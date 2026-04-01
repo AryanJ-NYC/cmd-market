@@ -1,4 +1,4 @@
-import { HeadObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../env';
 
@@ -6,6 +6,7 @@ import { env } from '../env';
 const SPACES_REGION = 'nyc3';
 const SPACES_BUCKET = 'cmd-market-space-dev';
 const SPACES_PUBLIC_BASE_URL = `https://${SPACES_BUCKET}.${SPACES_REGION}.digitaloceanspaces.com`;
+const DOWNLOAD_URL_TTL_SECONDS = 60 * 15;
 const UPLOAD_URL_TTL_SECONDS = 60 * 15;
 
 let spacesClient: S3Client | null = null;
@@ -40,6 +41,17 @@ export function buildDraftAssetKey({ filename, listingId, uploadId }: BuildDraft
 
 export function getPublicAssetUrl(assetKey: string) {
   return new URL(assetKey, `${SPACES_PUBLIC_BASE_URL}/`).toString();
+}
+
+export async function createPresignedDownloadUrl(assetKey: string) {
+  const command = new GetObjectCommand({
+    Bucket: SPACES_BUCKET,
+    Key: assetKey,
+  });
+
+  return getSignedUrl(getSpacesClient(), command, {
+    expiresIn: DOWNLOAD_URL_TTL_SECONDS,
+  });
 }
 
 export async function assertUploadedAssetExists(assetKey: string) {

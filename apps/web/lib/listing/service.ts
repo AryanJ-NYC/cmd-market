@@ -6,6 +6,7 @@ import { resolveSellerRequestContext } from "../seller/service";
 import {
   assertUploadedAssetExists,
   buildDraftAssetKey,
+  createPresignedDownloadUrl,
   createPresignedUploadRequest,
   getPublicAssetUrl,
   MissingUploadedAssetError,
@@ -393,7 +394,7 @@ export async function getPublishedListingMedia(
   return {
     data: {
       altText: media.altText,
-      assetUrl: getPublicAssetUrl(media.assetKey),
+      assetUrl: await createPresignedDownloadUrl(media.assetKey),
       id: media.id,
       listingId,
       sortOrder: media.sortOrder,

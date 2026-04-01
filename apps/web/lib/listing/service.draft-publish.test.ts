@@ -22,6 +22,7 @@ const {
     findShippingProfileById: vi.fn()
   },
   storage: {
+    createPresignedDownloadUrl: vi.fn(),
     getPublicAssetUrl: vi.fn()
   }
 }));
@@ -39,6 +40,7 @@ vi.mock("./repository", () => ({
 }));
 
 vi.mock("../storage/spaces", () => ({
+  createPresignedDownloadUrl: storage.createPresignedDownloadUrl,
   getPublicAssetUrl: storage.getPublicAssetUrl
 }));
 
@@ -69,6 +71,7 @@ describe("listing service issue #3", () => {
     listingRepository.publishDraftListing.mockReset();
     listingRepository.updateDraftListing.mockReset();
     shippingProfileRepository.findShippingProfileById.mockReset();
+    storage.createPresignedDownloadUrl.mockReset();
     storage.getPublicAssetUrl.mockReset();
   });
 
@@ -932,8 +935,8 @@ describe("listing service issue #3", () => {
   });
 
   it("returns the current backing asset url for published listing media", async () => {
-    storage.getPublicAssetUrl.mockReturnValue(
-      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+    storage.createPresignedDownloadUrl.mockResolvedValue(
+      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg?X-Amz-Signature=test",
     );
     listingRepository.findListingById.mockResolvedValue(
       createListingRecord({
@@ -951,13 +954,16 @@ describe("listing service issue #3", () => {
       data: {
         altText: "Front photo",
         assetUrl:
-          "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+          "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg?X-Amz-Signature=test",
         id: "med_123",
         listingId: "lst_123",
         sortOrder: 0,
       },
       ok: true,
     });
+    expect(storage.createPresignedDownloadUrl).toHaveBeenCalledWith(
+      "listings/published/lst_123/front.jpg",
+    );
   });
 
   it("returns not found when published listing media is requested for a missing or draft listing", async () => {
