@@ -9,8 +9,8 @@ This repository currently contains CMD Market's first real public and seller-fac
 - a Turborepo workspace
 - one Next.js web app in `apps/web`
 - shared TypeScript and Tailwind-related workspace packages
-- a public homepage, seller entry page, and generated discovery routes at `/llms.txt` and `/openapi.json`
-- browser seller bootstrap plus public category/listing reads and seller-scoped draft authoring, media, patch, and publish APIs
+- a public homepage, seller entry page, canonical listing pages, stable listing media routes, and generated discovery routes at `/llms.txt` and `/openapi.json`
+- browser seller bootstrap plus public category/listing reads with shareable app-owned listing/media URLs, and seller-scoped draft authoring, media, patch, and publish APIs
 
 ## Quick Start
 

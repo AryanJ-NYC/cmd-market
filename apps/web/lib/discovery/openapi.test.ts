@@ -8,6 +8,7 @@ describe("buildOpenApiDocument", () => {
 
     expect(document.openapi).toBe("3.1.0");
     expect(document.info.title).toBe("CMD Market API");
+    expect(document.info.version).toBe("0.4.0");
     expect(document.components?.securitySchemes?.browserSession).toBeDefined();
     expect(document.components?.securitySchemes?.sellerApiKey).toBeDefined();
     expect(paths["/api/categories"]?.get).toBeDefined();
@@ -52,6 +53,15 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/openclaw/authorization-sessions"]?.post?.security).toBeUndefined();
     expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post?.security).toBeUndefined();
     expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post?.security).toBeUndefined();
+    expect(document.components?.schemas?.PublicListingResponse).toMatchObject({
+      properties: {
+        data: {
+          properties: {
+            listing_url: expect.any(Object),
+          },
+        },
+      },
+    });
     expect(document.components?.schemas?.OpenClawAuthorizationSessionCreateRequest).toMatchObject({
       properties: {
         code_challenge: expect.any(Object),

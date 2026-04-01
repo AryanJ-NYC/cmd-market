@@ -43,6 +43,7 @@ import {
   createDraftListingSchema,
   getCategory,
   getPublicListing,
+  getPublishedListingMedia,
   publishListing,
   updateDraftListingSchema,
   updateDraftListing
@@ -707,7 +708,13 @@ describe("listing service issue #3", () => {
       status: 404,
     });
 
-    const publishedResult = await getPublicListing("lst_123");
+    const publishedResult = await (getPublicListing as unknown as (
+      listingId: string,
+      buildPublicUrl: (pathname: string) => string,
+    ) => ReturnType<typeof getPublicListing>)(
+      "lst_123",
+      (pathname) => new URL(pathname, "https://cmd.market").toString(),
+    );
 
     expect(publishedResult.ok).toBe(true);
 
@@ -716,12 +723,16 @@ describe("listing service issue #3", () => {
     }
 
     expect(publishedResult.data.category?.slug).toBe("trading-cards");
+    expect(publishedResult.data).toMatchObject({
+      id: "lst_123",
+      listingUrl: "https://cmd.market/listings/lst_123",
+    });
     expect(publishedResult.data.media).toEqual([
       {
         altText: "Front photo",
         id: "med_123",
         sortOrder: 0,
-        url: "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+        url: "https://cmd.market/listings/lst_123/media/med_123",
       },
     ]);
     expect(publishedResult.data.price).toEqual({
@@ -730,6 +741,128 @@ describe("listing service issue #3", () => {
     });
     expect(publishedResult.data.status).toBe("published");
     expect(publishedResult.data.title).toBe("1999 Charizard Holo PSA 8");
+  });
+
+  it("returns stable public listing and media urls for published listings", async () => {
+    storage.getPublicAssetUrl.mockReturnValue("https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg");
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        category: createCategoryRecord(),
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg"
+          })
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+        title: "1999 Charizard Holo PSA 8"
+      })
+    );
+
+    const publishedResult = await (getPublicListing as unknown as (
+      listingId: string,
+      buildPublicUrl: (pathname: string) => string,
+    ) => ReturnType<typeof getPublicListing>)(
+      "lst_123",
+      (pathname) => new URL(pathname, "https://cmd.market").toString(),
+    );
+
+    expect(publishedResult.ok).toBe(true);
+
+    if (!publishedResult.ok) {
+      return;
+    }
+
+    expect(publishedResult.data).toMatchObject({
+      id: "lst_123",
+      listingUrl: "https://cmd.market/listings/lst_123",
+      media: [
+        {
+          id: "med_123",
+          url: "https://cmd.market/listings/lst_123/media/med_123",
+        },
+      ],
+    });
+  });
+
+  it("returns the current backing asset url for published listing media", async () => {
+    storage.getPublicAssetUrl.mockReturnValue(
+      "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+    );
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg",
+          }),
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+      }),
+    );
+
+    await expect(getPublishedListingMedia("lst_123", "med_123")).resolves.toEqual({
+      data: {
+        altText: "Front photo",
+        assetUrl:
+          "https://cmd-market-space-dev.nyc3.digitaloceanspaces.com/listings/published/lst_123/front.jpg",
+        id: "med_123",
+        listingId: "lst_123",
+        sortOrder: 0,
+      },
+      ok: true,
+    });
+  });
+
+  it("returns not found when published listing media is requested for a missing or draft listing", async () => {
+    listingRepository.findListingById
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(
+        createListingRecord({
+          media: [
+            createListingMediaRecord({
+              assetKey: "listings/drafts/lst_123/front.jpg",
+            }),
+          ],
+          status: "draft",
+        }),
+      );
+
+    await expect(getPublishedListingMedia("lst_missing", "med_123")).resolves.toEqual({
+      code: "listing_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    });
+
+    await expect(getPublishedListingMedia("lst_123", "med_123")).resolves.toEqual({
+      code: "listing_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    });
+  });
+
+  it("returns not found when the media item does not belong to the published listing", async () => {
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        media: [
+          createListingMediaRecord({
+            assetKey: "listings/published/lst_123/front.jpg",
+            id: "med_123",
+          }),
+        ],
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        status: "published",
+      }),
+    );
+
+    await expect(getPublishedListingMedia("lst_123", "med_404")).resolves.toEqual({
+      code: "listing_media_not_found",
+      message: "Published listing media could not be found.",
+      ok: false,
+      status: 404,
+    });
   });
 });
 
