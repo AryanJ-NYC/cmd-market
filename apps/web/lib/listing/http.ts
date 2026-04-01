@@ -155,7 +155,7 @@ export const publicListingResponseSchema = z
       price: listingPriceSchema.nullable(),
       published_at: z.string().nullable(),
       quantity_available: z.number().int().nullable(),
-      shipping: listingShippingSchema.nullable(),
+      shipping: listingShippingSchema,
       seller: listingSellerSchema,
       status: z.string(),
       title: z.string().nullable(),

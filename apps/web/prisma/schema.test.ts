@@ -88,6 +88,9 @@ describe("prisma seller eligibility schema", () => {
     expect(migration).toContain('CREATE INDEX "shipping_profile_seller_account_id_idx"');
     expect(migration).toContain('CREATE INDEX "listing_shipping_profile_id_idx"');
     expect(migration).toContain('ALTER TABLE "listing" ADD CONSTRAINT "listing_shipping_profile_id_fkey"');
+    expect(migration).toContain('ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_domestic_rate_minor_nonnegative"');
+    expect(migration).toContain('ALTER TABLE "shipping_profile" ADD CONSTRAINT "shipping_profile_handling_time_days_valid"');
+    expect(migration).toContain('ALTER TABLE "listing" ADD CONSTRAINT "listing_non_draft_requires_shipping_profile"');
   });
 
   it("defines marketplace category metadata and listing attribute models", () => {

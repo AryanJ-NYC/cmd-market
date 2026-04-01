@@ -857,6 +857,24 @@ describe("listing service issue #3", () => {
     expect(publishedResult.data.status).toBe("published");
     expect(publishedResult.data.title).toBe("1999 Charizard Holo PSA 8");
   });
+
+  it("returns not found for published listings that are missing shipping", async () => {
+    listingRepository.findListingById.mockResolvedValue(
+      createListingRecord({
+        publishedAt: new Date("2026-03-30T11:00:00.000Z"),
+        shipping: null,
+        shippingProfileId: null,
+        status: "published",
+      })
+    );
+
+    await expect(getPublicListing("lst_legacy")).resolves.toEqual({
+      code: "listing_not_found",
+      message: "Published listing could not be found.",
+      ok: false,
+      status: 404,
+    });
+  });
 });
 
 function createSellerContext(

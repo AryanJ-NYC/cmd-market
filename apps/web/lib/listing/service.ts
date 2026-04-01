@@ -347,7 +347,7 @@ export async function getPublicListing(
 ): Promise<PublicResult<PublicListingResource>> {
   const listing = await listingRepository.findListingById(listingId);
 
-  if (!listing || listing.status !== "published") {
+  if (!listing || listing.status !== "published" || listing.shipping == null) {
     return {
       code: "listing_not_found",
       message: "Published listing could not be found.",
@@ -789,20 +789,25 @@ function serializePublicListing(listing: ListingRecord): PublicListingResource {
           },
     publishedAt: listing.publishedAt?.toISOString() ?? null,
     quantityAvailable: listing.quantityAvailable,
-    shipping:
-      listing.shipping == null
-        ? null
-        : {
-            currencyCode: listing.shipping.currencyCode,
-            domesticRateMinor: listing.shipping.domesticRateMinor,
-            handlingTimeDays: listing.shipping.handlingTimeDays,
-            mode: listing.shipping.mode,
-            scope: listing.shipping.scope,
-          },
+    shipping: serializeRequiredListingShipping(listing.shipping),
     seller: listing.seller,
     status: listing.status,
     title: listing.title,
     updatedAt: listing.updatedAt.toISOString(),
+  };
+}
+
+function serializeRequiredListingShipping(shipping: ListingRecord["shipping"]) {
+  if (shipping == null) {
+    throw new Error("Published listings must include shipping.");
+  }
+
+  return {
+    currencyCode: shipping.currencyCode,
+    domesticRateMinor: shipping.domesticRateMinor,
+    handlingTimeDays: shipping.handlingTimeDays,
+    mode: shipping.mode,
+    scope: shipping.scope,
   };
 }
 
@@ -1288,6 +1293,13 @@ export type PublicListingResource = BaseListingResource & {
     sortOrder: number;
     url: string;
   }>;
+  shipping: {
+    currencyCode: "USD";
+    domesticRateMinor: number;
+    handlingTimeDays: 1 | 2 | 3;
+    mode: "flat";
+    scope: "us_50_states";
+  };
 };
 
 export type UploadSessionResource = {
