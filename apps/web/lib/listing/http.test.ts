@@ -146,6 +146,13 @@ describe("listing/http", () => {
         },
         published_at: "2026-03-30T20:00:00.000Z",
         quantity_available: 1,
+        shipping: {
+          currency_code: "USD",
+          domestic_rate_minor: 499,
+          handling_time_days: 2,
+          mode: "flat",
+          scope: "us_50_states",
+        },
         seller: {
           display_name: "Scarce City",
           id: "sel_123",

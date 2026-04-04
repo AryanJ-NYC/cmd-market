@@ -260,7 +260,7 @@ export function buildOpenApiDocument() {
       "/api/seller/listings": {
         post: {
           description:
-            "Creates a seller-owned draft listing. Use a browser session or seller API key for the request itself; API keys do not authenticate browser `/seller/*` routes.",
+            "Creates a seller-owned draft listing. Use a browser session or seller API key for the request itself; API keys do not authenticate browser `/seller/*` routes. For seller-facing content or category-specific values, ask the human instead of guessing when the source material is ambiguous or incomplete.",
           requestBody: jsonRequestBody(
             createDraftListingSchema,
             "Optional initial fields for a seller-owned draft listing."
@@ -296,7 +296,7 @@ export function buildOpenApiDocument() {
         },
         patch: {
           description:
-            "Patches draft listing fields and typed category attributes for the active seller context. API keys do not authenticate browser `/seller/*` routes.",
+            "Patches draft listing fields and typed category attributes for the active seller context. API keys do not authenticate browser `/seller/*` routes. For seller-facing content or category-specific values, ask the human instead of guessing when the source material is ambiguous or incomplete.",
           requestBody: jsonRequestBody(
             updateDraftListingSchema,
             "Draft listing patch payload."

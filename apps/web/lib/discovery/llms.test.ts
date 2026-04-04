@@ -27,6 +27,8 @@ describe("buildLlmsText", () => {
     expect(llms).toContain("OpenClaw is the first implemented browser handoff integration today.");
     expect(llms).toContain("PKCE-style verifier flow");
     expect(llms).toContain("Prefer canonical listing page URLs for user-facing shares");
+    expect(llms).toContain("ask the human instead of guessing");
+    expect(llms).toContain("Examples in docs and OpenAPI are illustrative, not defaults.");
     expect(llms).toContain(
       "[Architecture](https://raw.githubusercontent.com/AryanJ-NYC/cmd-market/master/ARCHITECTURE.md)"
     );

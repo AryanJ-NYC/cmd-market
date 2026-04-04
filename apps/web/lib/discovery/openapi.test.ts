@@ -54,6 +54,12 @@ describe("buildOpenApiDocument", () => {
     expect(paths["/api/seller/context"]?.get?.description).toContain(
       "API keys do not authenticate browser `/seller/*` routes."
     );
+    expect(paths["/api/seller/listings"]?.post?.description).toContain(
+      "ask the human instead of guessing"
+    );
+    expect(paths["/api/seller/listings/{listingId}"]?.patch?.description).toContain(
+      "ask the human instead of guessing"
+    );
     expect(paths["/api/openclaw/authorization-sessions"]?.post?.security).toBeUndefined();
     expect(paths["/api/openclaw/authorization-sessions/{sessionId}/status"]?.post?.security).toBeUndefined();
     expect(paths["/api/openclaw/authorization-sessions/{sessionId}/redeem"]?.post?.security).toBeUndefined();

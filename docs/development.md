@@ -236,6 +236,7 @@ The current OpenClaw handoff is safe for public clients because CMD Market store
    ```bash
    curl http://localhost:3000/api/categories/trading-cards
    ```
+   These examples are illustrative. Agents should ask the human for seller-facing fields or category-specific values instead of guessing when the source material is ambiguous or incomplete.
 7. Patch the draft with trading-card fields and attributes:
    ```bash
    curl -X PATCH http://localhost:3000/api/seller/listings/lst_123 \

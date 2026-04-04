@@ -621,11 +621,13 @@ const draftListingFieldsSchema = z.object({
     example: "cat_cards",
   }),
   condition_code: z.string().trim().min(1).optional().meta({
-    description: "Optional marketplace condition code.",
+    description:
+      "Optional marketplace condition code. Use seller-confirmed or otherwise authoritative values; ask the human instead of guessing when uncertain.",
     example: "used_good",
   }),
   description: z.string().trim().min(1).optional().meta({
-    description: "Optional seller-facing listing description.",
+    description:
+      "Optional seller-facing listing description. Ask the human instead of inventing details when the source material is ambiguous or incomplete.",
     example: "Clean slab, no cracks, centered well.",
   }),
   price: z
@@ -653,7 +655,8 @@ const draftListingFieldsSchema = z.object({
     example: "shp_123",
   }),
   title: z.string().trim().min(1).optional().meta({
-    description: "Optional listing title.",
+    description:
+      "Optional listing title. Ask the human instead of guessing when the item name is unclear from the source material.",
     example: "1999 Charizard Holo PSA 8",
   }),
 });
@@ -684,7 +687,8 @@ export const updateDraftListingSchema = draftListingFieldsSchema
       )
       .optional()
       .meta({
-        description: "Optional typed category attributes to set or clear on the draft listing.",
+        description:
+          "Optional typed category attributes to set or clear on the draft listing. Use seller-confirmed or otherwise authoritative values; ask the human instead of guessing required attributes.",
       }),
   })
   .strict()

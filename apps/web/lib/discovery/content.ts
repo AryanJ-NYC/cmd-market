@@ -12,7 +12,9 @@ export const discoveryNotes = [
   "API keys authenticate seller API routes only.",
   "Seller API keys do not authenticate browser `/seller/*` routes. Browser seller flows still start with sign-in and either first-workspace creation or workspace selection.",
   "Sellers manage reusable shipping profiles, and public listings expose normalized flat domestic shipping for the US 50 states + DC.",
-  "Prefer canonical listing page URLs for user-facing shares, and use the stable listing media route when binary image fetches are needed."
+  "Prefer canonical listing page URLs for user-facing shares, and use the stable listing media route when binary image fetches are needed.",
+  "For seller-facing listing content and category attributes, ask the human instead of guessing when the source material is ambiguous or incomplete.",
+  "Examples in docs and OpenAPI are illustrative, not defaults."
 ] as const;
 
 export const publicRoutes = [
